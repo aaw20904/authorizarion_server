@@ -13,19 +13,48 @@ class MysqlLayer {
     }
 
     async initDb(){
+
+        await new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query("CREATE TABLE IF NOT EXISTS user ("+
+                   " user_id INT NOT NULL AUTO_INCREMENT,"+
+                   "email VARCHAR(45) NOT NULL,"+
+                   " passw BLOB NULL,"+
+                   " picture BLOB NULL,"+
+                   "name VARCHAR(45) NULL,"+
+                  " PRIMARY KEY (user_id)," +
+                  " UNIQUE INDEX email (email) VISIBLE);" ,
+                       (err, rows, fields)=>{
+                           if (err) {
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               resolve(rows);
+                           }
+                   })
+               }
+            })
+        });
+
         return new Promise((resolve, reject) => {
             this.#bdPool.getConnection((err, connection)=>{
                if (err) {
                    reject(err);
                } else {
-                   connection.query("CREATE TABLE IF NOT EXISTS `my_bot`.`user` ("+
-                   " `user_id` INT NOT NULL AUTO_INCREMENT,"+
-                   "`email` VARCHAR(45) NOT NULL,"+
-                   " `passw` BLOB NULL,"+
-                   " `picture` BLOB NULL,"+
-                   "`name` VARCHAR(45) NULL,"+
-                  " PRIMARY KEY (`user_id`)," +
-                  " UNIQUE INDEX `email_UNIQUE` (`email` ASC) VISIBLE);" ,
+                   connection.query("CREATE TABLE IF NOT EXISTS session ("+
+                   "hi_p INT NOT NULL,"+
+                   "lo_p INT NOT NULL,"+
+                   "user_id INT NOT NULL,"+
+                   "expired INT NULL,"+
+                   "priv_k BLOB NULL,"+
+                   "pub_k BLOB NULL,"+
+                   "last_d INT NULL,"+
+                   "PRIMARY KEY (hi_p, lo_p),"+
+                   "FOREIGN KEY (user_id) REFERENCES user(user_id)   ON DELETE CASCADE);" ,
                        (err, rows, fields)=>{
                            if (err) {
                                reject(err)
@@ -65,6 +94,11 @@ class MysqlLayer {
                     connection.query('INSERT INTO user ( email, passw, picture, name) VALUES (? , ?, ?, ?)',
                         [par.email, par.password, par.picture, par.name], (err, rows, fields)=>{
                             if (err) {
+                                if(err.errno === 1062){
+                                    err.alrEx = true;
+                                } else{
+                                    err.alrEx =false;
+                                }
                                 reject(err)
                             } else {
                                   // Release the connection back to the pool
@@ -90,16 +124,56 @@ class MysqlLayer {
                            } else {
                                  // Release the connection back to the pool
                                connection.release();
-                               resolve(rows);
+                               if(rows.length === 1) {
+                                resolve(rows[0]);
+                               } else {
+                                resolve(false);
+                               }
+                               
                            }
                    })
                }
             })
         });
     }
+
+    async createSession ({hi_p=0, lo_p=0, user_id="123"}) {
+        return new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`INSERT INTO session (hi_p, lo_p, user_id) VALUES (?,?,?);`,
+                   [hi_p, lo_p, user_id],
+                     (err, rows, fields)=>{
+                           if (err) {
+                            if(err.errno === 1062){
+                                err.sessEx = true;
+                            } if(err.errno == 1452){
+                                err.wrongUsr = true;
+                            }
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               if(rows.length === 1) {
+                                resolve(rows[0]);
+                               } else {
+                                resolve(false);
+                               }
+                               
+                           }
+                   })
+               }
+            })
+        });
+    }
+
+
+}
    
     
-} 
+
 
 
 module.exports = MysqlLayer;
