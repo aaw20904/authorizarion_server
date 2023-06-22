@@ -3,6 +3,7 @@ class Sessions {
     #keygen;
     #idGen;
     constructor(){
+        //generate random number from two parts
         this.#idGen = async () =>{
             return  new Promise((resolve, reject) => {
                 crypto.randomBytes(16,(err, buf)=>{
@@ -17,12 +18,10 @@ class Sessions {
             });
         }
 
-
+       //generate key pair
         this.#keygen = async (passphrase="456hgfh") =>{
             return await new Promise((resolve, reject) => {
                         
-                // Calling generateKeyPair() method
-                // with its parameters
             crypto.generateKeyPair('rsa', {
                                             modulusLength: 530,    // options
                                             publicExponent: 0x10101,
@@ -59,9 +58,24 @@ class Sessions {
     }
 
     async createNewSession(usr_id){
-        //firstly, generate a key pair
+        
+        let actionComplete = true;
+        let tempNum, sessionIds, keyPair, sessionToken, b64HighId, b64LowId, b64Issued, b64Signature, tempBuf;
+        //A)Making key pair
+        keyPair = await this.#keygen('pussycat');
+        //B)Generate ID of session (two component);
+        while (actionComplete) {
+            //try to generate ID of the sessoin
+            sessionIds = await this.#idGen();
+            actionComplete = await this.storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
+        }
+        //C)Making Base64 string 
+         tempBuf = Buffer.allocUnsafe(8);
+         tempNum = BigInt(sessionIds.high);
+         tempBuf.writeBigUInt64BE(tempNum);
+         tempNum = tempBuf.toString("base64url");
 
-       return  this.storage.createSession({hi_p:2, lo_p:3, user_id:usr_id});
+       return tempNum; // this.storage.createSession({hi_p:2, lo_p:3, user_id:usr_id});
     }
 }
 

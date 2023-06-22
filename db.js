@@ -137,7 +137,7 @@ class MysqlLayer {
         });
     }
 
-    async createSession ({hi_p=0, lo_p=0, user_id="123"}) {
+   /* async createSession ({hi_p=0, lo_p=0, user_id="123"}) {
         return new Promise((resolve, reject) => {
             this.#bdPool.getConnection((err, connection)=>{
                if (err) {
@@ -167,13 +167,38 @@ class MysqlLayer {
                }
             })
         });
-    }
+    }*/
 
-
+   async isSessionExists({hi_p=1, lo_p=2}){
+    
+     return new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`SELECT * FROM session WHERE hi_p=? AND lo_p=?;`,
+                   [hi_p, lo_p],
+                     (err, rows, fields)=>{
+                           if (err) {
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               if(rows.length === 1) {
+                                resolve(true);
+                               } else {
+                                resolve(false);
+                               }
+                               
+                           }
+                   })
+               }
+            })
+        });
+    
+   }
 }
    
-    
-
 
 
 module.exports = MysqlLayer;

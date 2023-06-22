@@ -8,8 +8,9 @@ async function m256(){
     let rdbmsLayer = new dbLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
     let sessions = new sessionL();
     sessions.storage = rdbmsLayer;
-    console.log(await sessions.genNum());
+  
     await rdbmsLayer.initDb();
+      console.log(await sessions.createNewSession(1));
 
     try{
         await rdbmsLayer.createNewUser({name:"Wasya",password:"123",email:"wasya@mail.ru",picture:"jpeeeeg"});
