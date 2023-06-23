@@ -20,7 +20,7 @@ class MysqlLayer {
                    reject(err);
                } else {
                    connection.query("CREATE TABLE IF NOT EXISTS user ("+
-                   " user_id INT NOT NULL AUTO_INCREMENT,"+
+                   " user_id BIGINT NOT NULL AUTO_INCREMENT,"+
                    "email VARCHAR(45) NOT NULL,"+
                    " passw BLOB NULL,"+
                    " picture BLOB NULL,"+
@@ -46,13 +46,13 @@ class MysqlLayer {
                    reject(err);
                } else {
                    connection.query("CREATE TABLE IF NOT EXISTS session ("+
-                   "hi_p INT NOT NULL,"+
-                   "lo_p INT NOT NULL,"+
-                   "user_id INT NOT NULL,"+
-                   "expired INT NULL,"+
+                   "hi_p BIGINT NOT NULL,"+
+                   "lo_p BIGINT NOT NULL,"+
+                   "user_id BIGINT NOT NULL,"+
+                   "expired BIGINT NULL,"+
                    "priv_k BLOB NULL,"+
                    "pub_k BLOB NULL,"+
-                   "last_d INT NULL,"+
+                   "last_d BIGINT NULL,"+
                    "PRIMARY KEY (hi_p, lo_p),"+
                    "FOREIGN KEY (user_id) REFERENCES user(user_id)   ON DELETE CASCADE);" ,
                        (err, rows, fields)=>{
@@ -137,14 +137,14 @@ class MysqlLayer {
         });
     }
 
-   /* async createSession ({hi_p=0, lo_p=0, user_id="123"}) {
+     async createUserSession ({hi_p=0, lo_p=0, user_id="123",expired=1, priv_k, pub_k, last_d=1}) {
         return new Promise((resolve, reject) => {
             this.#bdPool.getConnection((err, connection)=>{
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`INSERT INTO session (hi_p, lo_p, user_id) VALUES (?,?,?);`,
-                   [hi_p, lo_p, user_id],
+                   connection.query(`INSERT INTO session (hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d ) VALUES (?,?,?,?,?,?,?);`,
+                   [hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d],
                      (err, rows, fields)=>{
                            if (err) {
                             if(err.errno === 1062){
@@ -167,7 +167,34 @@ class MysqlLayer {
                }
             })
         });
-    }*/
+    } 
+
+    async clearSessionWhenExists(user_id) {
+        return new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`DELETE  FROM session WHERE user_id=?;`,
+                   [user_id],
+                     (err, rows, fields)=>{
+                           if (err) {
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               if(rows.length === 1) {
+                                resolve(true);
+                               } else {
+                                resolve(false);
+                               }
+                               
+                           }
+                   })
+               }
+            })
+        });
+    }
 
    async isSessionExists({hi_p=1, lo_p=2}){
     

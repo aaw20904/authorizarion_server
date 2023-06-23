@@ -11,7 +11,8 @@ async function m256(){
     sessions.storage = rdbmsLayer;
   
     await rdbmsLayer.initDb();
-      console.log(await sessions.createNewSession(1));
+      
+     
 
     try{
         await rdbmsLayer.createNewUser({name:"Wasya",password:"123",email:"wasya@mail.ru",picture:"jpeeeeg"});
@@ -22,6 +23,7 @@ async function m256(){
             throw new Error(e);
         }
     }
+    console.log(await sessions.createNewSession(1));
    
     //console.log(await sessions.createNewSession(4));
     let a ="12"
