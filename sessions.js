@@ -1,8 +1,44 @@
 const crypto = require("crypto");
 class Sessions {
+    #createSign;
+    #verifySign;
     #keygen;
     #idGen;
+    #uint64ToBase64;
+    #base64ToUint64;
+    #base64ToBuffer;
+    #createDigitalSignature;
+    #verifyDigitalSignature;
     constructor(){
+          this.#createDigitalSignature = (pk, data)=>{
+            //sign data - must been used ONCE!
+            const sign = crypto.createSign('SHA256');
+            sign.update(data);
+            let result = sign.sign(pk, 'base64url');
+            return result;
+          }
+
+          this.#verifyDigitalSignature = (pubk, data, sign)=>{
+                 // Verify Signature .Inst of Verify must using only one time!
+                const verify = crypto.createVerify('SHA256');
+                verify.update(data);
+                const isSignatureValid = verify.verify(pubk, sign, 'base64url');
+                return isSignatureValid;
+          }
+      
+        
+
+        this.#uint64ToBase64 = (numToDec=256) => {
+          let myBuf = Buffer.allocUnsafe(8);
+          myBuf.writeBigUInt64BE(BigInt(numToDec));
+          return myBuf.toString("base64url");
+        }
+
+        this.#base64ToUint64 = (data="") =>{
+            let myBuf = Buffer.from(data, "base64url");
+            return BigInt(myBuf.readBigUInt64BE(myBuf));
+        }
+
         //generate random number from two parts
         this.#idGen = async () =>{
             return  new Promise((resolve, reject) => {
@@ -20,38 +56,39 @@ class Sessions {
 
        //generate key pair
         this.#keygen = async (passphrase="456hgfh") =>{
-            return await new Promise((resolve, reject) => {
-                        
-            crypto.generateKeyPair('rsa', {
-                                            modulusLength: 530,    // options
-                                            publicExponent: 0x10101,
-                                            publicKeyEncoding: {
-                                                type: 'pkcs1',
-                                                format: 'der'
-                                            },
-                                            privateKeyEncoding: {
-                                                type: 'pkcs8',
-                                                format: 'der',
-                                                cipher: 'aes-192-cbc',
-                                                passphrase: passphrase
-                                            }
-                                        },  (err, publicKey, privateKey) => { // Callback function
-                                                if (!err) {
-                                                resolve({publicKey, privateKey});
-                                                } else {
-                                                // Prints error
-                                                reject(err);
-                                                }
-                                                
-                                            });
+            return new Promise((resolve, reject) => {
                 
+
+               crypto.generateKeyPair('rsa', {
+                    modulusLength: 2048,
+                      publicKeyEncoding: {
+                        type: 'spki',
+                        format: 'pem',
+                    },
+                    privateKeyEncoding: {
+                        type: 'pkcs8',
+                        format: 'pem',
+                    }
+                   
+                    }, (err, publicKey, privateKey) => {
+                        if(err){
+                            reject(err);
+                        } else{
+                             
+                            resolve({privateKey , publicKey});
+                        }
+                    // Handle errors and use the generated key pair.
+                    });
+
             });
-            
         }
+ 
     }
     async createKey(psw){
         return this.#keygen(psw);
     }
+
+    
 
     async genNum(){
         return this.#idGen();
@@ -59,21 +96,36 @@ class Sessions {
 
     async createNewSession(usr_id){
         
-        let actionComplete = true;
-        let tempNum, sessionIds, keyPair, sessionToken, b64HighId, b64LowId, b64Issued, b64Signature, tempBuf;
+        let sessionExists = true;
+        let  sessionIds, keyPair, sessionToken, signature, issued,
+         b64HighId, b64LowId, b64Issued, b64Signature, tempBuf;
         //A)Making key pair
         keyPair = await this.#keygen('pussycat');
         //B)Generate ID of session (two component);
-        while (actionComplete) {
+        while (sessionExists) {
             //try to generate ID of the sessoin
             sessionIds = await this.#idGen();
-            actionComplete = await this.storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
+            sessionExists = await this.storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
         }
-        //C)Making Base64 string 
-         tempBuf = Buffer.allocUnsafe(8);
-         tempNum = BigInt(sessionIds.high);
-         tempBuf.writeBigUInt64BE(tempNum);
-         tempNum = tempBuf.toString("base64url");
+
+        //C) issuance data
+        issued = Date.now() - 5;
+        //D)Making Base64 string
+        b64HighId = this.#uint64ToBase64(sessionIds.high);
+        b64LowId = this.#uint64ToBase64(sessionIds.low);
+        b64Issued = this.#uint64ToBase64(issued);
+        //E)Making signature
+ 
+        signature = this.#createDigitalSignature(keyPair.privateKey, `${b64HighId}${b64LowId}${b64Issued}`);
+
+        //TEST Verify Signature .Inst of Verify must using only one time!
+        const verify = this.#verifyDigitalSignature(keyPair.publicKey,`${b64HighId}${b64LowId}${b64Issued}`,signature);
+
+      
+
+   
+
+        
 
        return tempNum; // this.storage.createSession({hi_p:2, lo_p:3, user_id:usr_id});
     }

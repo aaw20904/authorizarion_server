@@ -3,6 +3,7 @@ const dbLayer  = require("./db");
 const sessionL = require("./sessions");
 
 async function m256(){
+// Generate Key Pair
 
     
     let rdbmsLayer = new dbLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
