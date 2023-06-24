@@ -56,7 +56,7 @@ class Sessions {
 
         this.#base64urlToUint64 = (data="") =>{
             let myBuf = Buffer.from(data, "base64url");
-            return BigInt(myBuf.readBigUInt64BE(myBuf));
+            return BigInt(myBuf.readBigUInt64BE(0));
         }
 
         //generate random number from two parts
@@ -134,10 +134,11 @@ class Sessions {
         b64HighId = this.#uint64ToBase64url(sessionIds.high);
         b64LowId = this.#uint64ToBase64url(sessionIds.low);
         b64Issued = this.#uint64ToBase64url(issued);
+        
         //6) Making signature
         b64Signature = await this.#createDigitalSignature(keyPair.privateKey, `${b64HighId}${b64LowId}${b64Issued}`);
         //7) construct all the token
-        sessionToken = `${b64HighId}.${b64LowId},${b64Issued},${b64Signature}`;
+        sessionToken = `${b64HighId}${b64LowId}${b64Issued}${b64Signature}`;
         //8)Save session into storage:
         await this.storage.createUserSession({
            hi_p: sessionIds.high, 
@@ -157,7 +158,37 @@ class Sessions {
     }
 
     async verifyUserSession(token){
-        //1)convert parameters;
+        let  sessionIds,highId, lowId, keyPair, sessionToken, b64signature, issued, activeUntil,
+        b64highId, b64lowId, b64Issued, storedSession;
+        //1)parse parameters;
+        b64highId = token.slice(0,11);
+        b64lowId = token.slice(11,22);
+        b64Issued = token.slice(22,33);
+        b64signature = token.slice(33, token.length);
+        //2)converting to values
+        highId = this.#base64urlToUint64(b64highId);
+        lowId = this.#base64urlToUint64(b64lowId);
+        issued = this.#base64urlToUint64(b64Issued);
+        //3)get the session;
+        storedSession = await this.storage.getSessionById({hi_p:highId, lo_p:lowId});
+        //when not exists:
+        if(!storedSession){
+            return false;
+        }
+        //4) Has a session been expired?
+        if(Date.now() > storedSession.expired ){
+            return false;
+        }
+        //5) Has a session been reused?
+        if (storedSession.last_d === issued) {
+            //remove a session
+            await this.storage.clearSessionWhenExists(storedSession.user_id);
+            return false;
+        }
+        //6)Checking digital signature
+        
+
+
 
     }
 }

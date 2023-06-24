@@ -6,9 +6,9 @@ async function m256(){
 // Generate Key Pair
 
     
-    let rdbmsLayer = new dbLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
+    let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
     let sessions = new sessionL();
-    sessions.storage = rdbmsLayer;
+    sessions.storage = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
   
     await rdbmsLayer.initDb();
       
@@ -23,7 +23,9 @@ async function m256(){
             throw new Error(e);
         }
     }
-    console.log(await sessions.createNewSession(1));
+    let tokenId = await sessions.createNewSession(1);
+    console.log(tokenId);
+    sessions.verifyUserSession(tokenId);
    
     //console.log(await sessions.createNewSession(4));
     let a ="12"

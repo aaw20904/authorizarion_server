@@ -12,6 +12,10 @@ class MysqlLayer {
           });
     }
 
+    getMysqlPool(){
+        return this.#bdPool;
+    }
+
     async initDb(){
 
         await new Promise((resolve, reject) => {
@@ -20,7 +24,7 @@ class MysqlLayer {
                    reject(err);
                } else {
                    connection.query("CREATE TABLE IF NOT EXISTS user ("+
-                   " user_id BIGINT NOT NULL AUTO_INCREMENT,"+
+                   " user_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,"+
                    "email VARCHAR(45) NOT NULL,"+
                    " passw BLOB NULL,"+
                    " picture BLOB NULL,"+
@@ -46,13 +50,13 @@ class MysqlLayer {
                    reject(err);
                } else {
                    connection.query("CREATE TABLE IF NOT EXISTS session ("+
-                   "hi_p BIGINT NOT NULL,"+
-                   "lo_p BIGINT NOT NULL,"+
-                   "user_id BIGINT NOT NULL,"+
-                   "expired BIGINT NULL,"+
+                   "hi_p BIGINT UNSIGNED NOT NULL,"+
+                   "lo_p BIGINT UNSIGNED NOT NULL,"+
+                   "user_id BIGINT UNSIGNED NOT NULL,"+
+                   "expired BIGINT UNSIGNED NULL,"+
                    "priv_k BLOB NULL,"+
                    "pub_k BLOB NULL,"+
-                   "last_d BIGINT NULL,"+
+                   "last_d BIGINT UNSIGNED NULL,"+
                    "PRIMARY KEY (hi_p, lo_p),"+
                    "FOREIGN KEY (user_id) REFERENCES user(user_id)   ON DELETE CASCADE);" ,
                        (err, rows, fields)=>{
@@ -137,41 +141,82 @@ class MysqlLayer {
         });
     }
 
-     async createUserSession ({hi_p=0, lo_p=0, user_id="123",expired=1, priv_k, pub_k, last_d=1}) {
+
+
+
+
+   
+
+
+}
+   /************* */
+class StorageOfSessions {
+    #mysqlPool;
+    constructor(pool){
+        this.#mysqlPool = pool;
+    }
+
+    async isSessionExists({hi_p=1, lo_p=2}){
+    
         return new Promise((resolve, reject) => {
-            this.#bdPool.getConnection((err, connection)=>{
-               if (err) {
-                   reject(err);
-               } else {
-                   connection.query(`INSERT INTO session (hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d ) VALUES (?,?,?,?,?,?,?);`,
-                   [hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d],
-                     (err, rows, fields)=>{
-                           if (err) {
-                            if(err.errno === 1062){
-                                err.sessEx = true;
-                            } if(err.errno == 1452){
-                                err.wrongUsr = true;
-                            }
-                               reject(err)
-                           } else {
-                                 // Release the connection back to the pool
-                               connection.release();
-                               if(rows.length === 1) {
-                                resolve(rows[0]);
-                               } else {
-                                resolve(false);
-                               }
-                               
-                           }
-                   })
-               }
-            })
-        });
-    } 
+               this.#mysqlPool.getConnection((err, connection)=>{
+                  if (err) {
+                      reject(err);
+                  } else {
+                      connection.query(`SELECT user_id FROM session WHERE hi_p=? AND lo_p=?;`,
+                      [hi_p, lo_p],
+                        (err, rows, fields)=>{
+                              if (err) {
+                                  reject(err)
+                              } else {
+                                    // Release the connection back to the pool
+                                  connection.release();
+                                  if(rows.length === 1) {
+                                   resolve(true);
+                                  } else {
+                                   resolve(false);
+                                  }
+                                  
+                              }
+                      })
+                  }
+               })
+           });
+       
+      }
+
+      async getSessionById({hi_p=1, lo_p=2}){
+    
+        return new Promise((resolve, reject) => {
+            this.#mysqlPool.getConnection((err, connection)=>{
+                  if (err) {
+                      reject(err);
+                  } else {
+                      connection.query(`SELECT * FROM session WHERE hi_p=? AND lo_p=?;`,
+                      [hi_p, lo_p],
+                        (err, rows, fields)=>{
+                              if (err) {
+                                  reject(err)
+                              } else {
+                                    // Release the connection back to the pool
+                                  connection.release();
+                                  if(rows.length === 1) {
+                                   resolve(rows[0]);
+                                  } else {
+                                   resolve(false);
+                                  }
+                                  
+                              }
+                      })
+                  }
+               })
+           });
+       
+      }
 
     async clearSessionWhenExists(user_id) {
         return new Promise((resolve, reject) => {
-            this.#bdPool.getConnection((err, connection)=>{
+            this.#mysqlPool.getConnection((err, connection)=>{
                if (err) {
                    reject(err);
                } else {
@@ -196,38 +241,39 @@ class MysqlLayer {
         });
     }
 
-   async isSessionExists({hi_p=1, lo_p=2}){
-    
-     return new Promise((resolve, reject) => {
-            this.#bdPool.getConnection((err, connection)=>{
+    async createUserSession ({hi_p=0, lo_p=0, user_id="123",expired=1, priv_k, pub_k, last_d=1}) {
+        return new Promise((resolve, reject) => {
+            this.#mysqlPool.getConnection((err, connection)=>{
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`SELECT * FROM session WHERE hi_p=? AND lo_p=?;`,
-                   [hi_p, lo_p],
+                   connection.query(`INSERT INTO session (hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d ) VALUES (?,?,?,?,?,?,?);`,
+                   [hi_p, lo_p, user_id, expired, priv_k, pub_k, last_d],
                      (err, rows, fields)=>{
                            if (err) {
+                            if(err.errno === 1062){
+                                err.sessEx = true;
+                            } if(err.errno == 1452){
+                                err.wrongUsr = true;
+                            }
                                reject(err)
                            } else {
                                  // Release the connection back to the pool
                                connection.release();
-                               if(rows.length === 1) {
-                                resolve(true);
-                               } else {
-                                resolve(false);
-                               }
+                                resolve(rows);
                                
                            }
                    })
                }
             })
         });
-    
-   }
+    } 
+
+
+
+
 }
-   
 
-
-module.exports = MysqlLayer;
+module.exports ={ MysqlLayer, StorageOfSessions};
 
   
