@@ -1,34 +1,43 @@
 const crypto = require("crypto");
-const { resolve } = require("path");
+//const path = require("path");
 class Sessions {
-    #createSign;
-    #verifySign;
+    
     #keygen;
     #idGen;
     #uint64ToBase64url;
     #base64urlToUint64;
-    #base64ToBuffer;
+  
     #createDigitalSignature;
     #verifyDigitalSignature;
     #sessionExpirationLimit;
-    constructor () {
-        this.#sessionExpirationLimit = (1000 * 3600)|0; //one hour
+    #tokenExpirationLimit;
+    #sessionExtendTime;
+    #storage;
+    constructor (storage, sessionParams={///all the time are in milliSeconds
+            sessionExtensionTime:BigInt(1000 * 60 * 10), //this value has been added after successfull verification to session lifetime in a storage
+            sessionLifeTime:BigInt(1000 * 60 * 60), //lifetime of session. This value seved to the storage when a new session has been created
+            tokenLifeTime:BigInt(1000 * 60 * 5), ///lifetime of token.This value stays the same during all time of life of a session
+    }) {
+        this.#storage = storage;
+        this.#sessionExtendTime = sessionParams.sessionExtensionTime;//add to session expiration time when successfuly validated
+        this.#sessionExpirationLimit = sessionParams.sessionLifeTime; //one hour
+        this.#tokenExpirationLimit = sessionParams.tokenLifeTime; //5 minutes - lifetime of the token
             ///input data  - base64url string, output signature - base64
           this.#createDigitalSignature = async (privateKey, data, passphrase='cat')=>{
-            return new Promise((resolve, reject) => {
-                     crypto.sign('sha256', Buffer.from(data,'base64url'), {
-                                key: privateKey,
-                                passphrase: passphrase,
-                                padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-                                
-                            },  (err, signature)=>{
-                                    if(err){
-                                        reject(err)
-                                    }else{
-                                        resolve(signature.toString("base64url"))
-                                    }
-                            });
-            });
+                return new Promise((resolve, reject) => {
+                        crypto.sign('sha256', Buffer.from(data,'base64url'), {
+                                    key: privateKey,
+                                    passphrase: passphrase,
+                                    padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+                                    
+                                },  (err, signature)=>{
+                                        if(err){
+                                            reject(err)
+                                        }else{
+                                            resolve(signature.toString("base64url"))
+                                        }
+                                });
+                });
             
           }
               //signature and data are in base64url
@@ -75,10 +84,8 @@ class Sessions {
         }
 
        //generate key pair
-        this.#keygen = async (passphrase="cat") =>{
+        this.#keygen = async (passphrase="cat")=>{
             return new Promise((resolve, reject) => {
-                
-
                crypto.generateKeyPair('rsa', {
                     modulusLength: 2048,
                       publicKeyEncoding: {
@@ -93,9 +100,9 @@ class Sessions {
                       },
                    
                     }, (err, publicKey, privateKey) => {
-                        if(err){
+                        if (err) {
                             reject(err);
-                        } else{
+                        } else {
                              
                             resolve({privateKey , publicKey});
                         }
@@ -107,40 +114,46 @@ class Sessions {
  
     }
   
-    tob64(num){
+    tob64 (num) {
         return this.#uint64ToBase64url(num)
     }
+                /**
 
+            ▀█▀ █▀█ █▄▀ █▀▀ █▄░█   █▀▀ █▀▀ █▄░█
+            ░█░ █▄█ █░█ ██▄ █░▀█   █▄█ ██▄ █░▀█
+                */
     async createNewSession(user_id){
+        
         let sessionExists = true;
         let  sessionIds, keyPair, sessionToken, b64Signature, issued, activeUntil,
          b64HighId, b64LowId, b64Issued;
-        //1)Making key pair
+        //---1) Making key pair
         keyPair = await this.#keygen();
-        //2)When the sessions with this user exists - remove it:
-         await this.storage.clearSessionWhenExists(user_id);
-        //3)Generate ID of session (two component);
+        //---2) When the sessions with this user exists - remove it:
+         await this.#storage.clearSessionWhenExists(user_id);
+        //---3) Generate ID of session (two component);
         while (sessionExists) {
-            //try to generate ID of the sessoin
+            // try to generate ID of the sessoin
             sessionIds = await this.#idGen();
-            //checking - is there an another user`s sessions with the same primary key?
-            sessionExists = await this.storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
+            // checking - is there an another user`s sessions with the same primary key?
+            sessionExists = await this.#storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
         }
-        //4) issuance data and expiration threshold
+        //---4) issuance data and expiration (token and session) threshold
         issued = Date.now();
-        activeUntil = issued + this.#sessionExpirationLimit;
+        activeUntil = BigInt(Date.now()) + this.#sessionExpirationLimit;
+        
          
-        //5) Making Base64 string
+        //---5) Making Base64 string
         b64HighId = this.#uint64ToBase64url(sessionIds.high);
         b64LowId = this.#uint64ToBase64url(sessionIds.low);
         b64Issued = this.#uint64ToBase64url(issued);
         
-        //6) Making signature
+        //---6) Making signature
         b64Signature = await this.#createDigitalSignature(keyPair.privateKey, `${b64HighId}${b64LowId}${b64Issued}`);
-        //7) construct all the token
+        //---7) construct all the token
         sessionToken = `${b64HighId}${b64LowId}${b64Issued}${b64Signature}`;
-        //8)Save session into storage:
-        await this.storage.createUserSession({
+        //---8) Save session into storage:
+        await this.#storage.createUserSession({
            hi_p: sessionIds.high, 
            lo_p: sessionIds.low, 
            user_id: user_id, 
@@ -150,16 +163,20 @@ class Sessions {
             last_d: issued-2
         });
         
-        //9)return base64url session ID token:
+        //---9) return base64url session ID token:
         return sessionToken
         /*TEST ONLY: Verify Signature .Inst of Verify must using only one time!
          const verify = await this.#verifyDigitalSignature(keyPair.publicKey,`${b64HighId}${b64LowId}${b64Issued}`,signature);*/
 
     }
-
-    async verifyUserSession(token){
-        let  sessionIds,highId, lowId, keyPair, sessionToken, b64signature, issued, activeUntil,
-        b64highId, b64lowId, b64Issued, storedSession;
+   /**
+    
+        █░█ █▀▀ █▀█ █ █▀▀ █ █▀▀ ▄▀█ ▀█▀ █ █▀█ █▄░█
+        ▀▄▀ ██▄ █▀▄ █ █▀░ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█
+    */
+    async verifyUserSession (token) {
+        let  sessionIds, highId, lowId, keyPair, sessionToken, b64signature, issued, activeUntil,
+        b64highId, b64lowId, b64Issued, storedSession, resultOfVerification;
         //1)parse parameters;
         b64highId = token.slice(0,11);
         b64lowId = token.slice(11,22);
@@ -170,25 +187,49 @@ class Sessions {
         lowId = this.#base64urlToUint64(b64lowId);
         issued = this.#base64urlToUint64(b64Issued);
         //3)get the session;
-        storedSession = await this.storage.getSessionById({hi_p:highId, lo_p:lowId});
-        //when not exists:
+        storedSession = await this.#storage.getSessionById({hi_p:highId, lo_p:lowId});
+        //Is the session exists?:
         if(!storedSession){
             return false;
         }
         //4) Has a session been expired?
-        if(Date.now() > storedSession.expired ){
+        if(BigInt(Date.now()) > BigInt(storedSession.expired) ){
+            return false;
+        }
+        //4.A) Has the session token been expired?
+        if(BigInt(Date.now()) > BigInt(issued) + this.#tokenExpirationLimit){
             return false;
         }
         //5) Has a session been reused?
-        if (storedSession.last_d === issued) {
+        let lastSavedTimeStamp = BigInt(storedSession.last_d);
+        if ( lastSavedTimeStamp === issued) {
             //remove a session
-            await this.storage.clearSessionWhenExists(storedSession.user_id);
+            await this.#storage.clearSessionWhenExists(storedSession.user_id);
             return false;
         }
-        //6)Checking digital signature
-        
+        //6)Is a digital signature valid?
+        try {
+            resultOfVerification = await this.#verifyDigitalSignature(storedSession.pub_k,`${b64highId}${b64lowId}${b64Issued}`,b64signature);
+        } catch(e) {
+            //when an error as been occured during verification
+            return false;
+        }
 
-
+        if (!resultOfVerification) {
+         //when a signature isn`t valid
+            return false;
+        }
+        //7) Saving iss that has been received into storage and extends expiration time:
+          await this.#storage.updateSessionTimestamps({hi_p:highId, lo_p:lowId, expired: BigInt(storedSession.expired) + this.#sessionExtendTime, last_d:issued});
+        //8) Updtae issuance time of the token (refresh):
+          b64Issued = this.#uint64ToBase64url(Date.now());
+        //9) Create a new signature:
+          b64signature = await this.#createDigitalSignature(storedSession.priv_k,`${b64highId}${b64lowId}${b64Issued}`);
+        //10) Return a new token
+        return {
+                token:`${b64highId}${b64lowId}${b64Issued}${b64signature}`, 
+                user_id:storedSession.user_id
+               };
 
     }
 }

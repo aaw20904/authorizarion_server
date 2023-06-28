@@ -2,39 +2,41 @@ const express = require('express')
 const dbLayer  = require("./db");
 const sessionL = require("./sessions");
 
-async function m256(){
-// Generate Key Pair
 
-    
+// Require the router module
+let registerRouter = require('./routes/register');
+let loginRouter = require('./routes/login');
+let validationRouter = require('./routes/validate');
+
+
+const app = express();
+const port = 8080;
+
+async function main_proc(){
+    //db pool init
     let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
-    let sessions = new sessionL();
-    sessions.storage = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
-  
-    await rdbmsLayer.initDb();
-      
-     
+    //create storage
+    let store = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
+    //create sessions factory
+    let sessions = new sessionL(store);
 
-    try{
-        await rdbmsLayer.createNewUser({name:"Wasya",password:"123",email:"wasya@mail.ru",picture:"jpeeeeg"});
-    }catch(e){
-        if(e.alrEx){
-            console.log("User Already exists!")
-        } else {
-            throw new Error(e);
-        }
-    }
-    let tokenId = await sessions.createNewSession(1);
-    console.log(tokenId);
-    sessions.verifyUserSession(tokenId);
-   
-    //console.log(await sessions.createNewSession(4));
-    let a ="12"
-    console.log(await rdbmsLayer.getUserByEmail(a));
-    await rdbmsLayer.closeDatabase();
+    registerRouter.router.rdbmsLayer = rdbmsLayer;
+    loginRouter.router.rdbmsLayer = rdbmsLayer;
+    loginRouter.router.sessionLayer = sessions;
+    validationRouter.router.sessions = sessions;
 
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: false }));
+    app.use('/register', registerRouter.router);
+    app.use('/login',loginRouter.router);
+    app.use('/validate',validationRouter.router);
+    app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 }
 
-m256();
+main_proc();
+
+
+
 
 
 

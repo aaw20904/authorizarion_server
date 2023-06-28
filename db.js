@@ -26,7 +26,10 @@ class MysqlLayer {
                    connection.query("CREATE TABLE IF NOT EXISTS user ("+
                    " user_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,"+
                    "email VARCHAR(45) NOT NULL,"+
-                   " passw BLOB NULL,"+
+                   "passw BLOB NULL,"+
+                   "salt BLOB NULL"+
+                   "fail_a INT  DEFAULT 0"+
+                   "fail_date INT  DEFAULT 0"+
                    " picture BLOB NULL,"+
                    "name VARCHAR(45) NULL,"+
                   " PRIMARY KEY (user_id)," +
@@ -89,14 +92,14 @@ class MysqlLayer {
          })
      }
 
-    async createNewUser(par={name:"",password:"", email:"example@mail.com", picture:"123"}){
-         return new Promise((resolve, reject) => {
+    async createNewUser(par={name:"",password:"", email:"example@mail.com", picture:"123", passw:0, salt:0}){
+         return new Promise((resolve, reject)=> {
              this.#bdPool.getConnection((err, connection)=>{
                 if (err) {
                     reject(err);
                 } else {
-                    connection.query('INSERT INTO user ( email, passw, picture, name) VALUES (? , ?, ?, ?)',
-                        [par.email, par.password, par.picture, par.name], (err, rows, fields)=>{
+                    connection.query('INSERT INTO user ( email, passw, picture, name,  salt) VALUES (?, ?, ?, ?, ?)',
+                        [par.email, par.password, par.picture, par.name, par.salt], (err, rows, fields)=>{
                             if (err) {
                                 if(err.errno === 1062){
                                     err.alrEx = true;
@@ -122,6 +125,61 @@ class MysqlLayer {
                    reject(err);
                } else {
                    connection.query(`SELECT * FROM user WHERE email="${email}";`,
+                     (err, rows, fields)=>{
+                           if (err) {
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               if(rows.length === 1) {
+                                resolve(rows[0]);
+                               } else {
+                                resolve(false);
+                               }
+                               
+                           }
+                   })
+               }
+            })
+        });
+    }
+
+    async incrementFailLogins(user_id) {
+        return new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`UPDATE user SET fail_a=fail_a+1, fail_date=UNIX_TIMESTAMP()*1000 WHERE user_id=?;`,
+                   [ user_id],
+                     (err, rows, fields)=>{
+                           if (err) {
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               if(rows.length === 1) {
+                                resolve(rows[0]);
+                               } else {
+                                resolve(false);
+                               }
+                               
+                           }
+                   })
+               }
+            })
+        });
+    }
+
+
+    async clearUserBlocking (user_id) {
+        return new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`UPDATE user SET fail_a=0 WHERE user_id=? ;`,
+                   [user_id],
                      (err, rows, fields)=>{
                            if (err) {
                                reject(err)
@@ -270,6 +328,33 @@ class StorageOfSessions {
     } 
 
 
+    async updateSessionTimestamps ({hi_p=0, lo_p=0, expired=1, last_d=1}) {
+        return new Promise((resolve, reject) => {
+            this.#mysqlPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query(`UPDATE session SET last_d=?, expired=? WHERE hi_p=? AND lo_p=?;`,
+                   [last_d, expired, hi_p, lo_p],
+                     (err, rows, fields)=>{
+                           if (err) {
+                            if (err.errno === 1062) {
+                                err.sessEx = true;
+                            } if (err.errno == 1452) {
+                                err.wrongUsr = true;
+                            }
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                                resolve(rows);
+                               
+                           }
+                   })
+               }
+            })
+        });
+    } 
 
 
 }
