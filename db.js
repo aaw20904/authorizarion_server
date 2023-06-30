@@ -23,7 +23,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query("CREATE TABLE IF NOT EXISTS user ("+
+                   connection.query("CREATE TABLE IF NOT EXISTS users ("+
                    " user_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,"+
                    "email VARCHAR(45) NOT NULL,"+
                    "passw BLOB NULL,"+
@@ -98,7 +98,7 @@ class MysqlLayer {
                 if (err) {
                     reject(err);
                 } else {
-                    connection.query('INSERT INTO user ( email, passw, picture, name,  salt) VALUES (?, ?, ?, ?, ?)',
+                    connection.query('INSERT INTO users ( email, passw, picture, name,  salt) VALUES (?, ?, ?, ?, ?)',
                         [par.email, par.password, par.picture, par.name, par.salt], (err, rows, fields)=>{
                             if (err) {
                                 if(err.errno === 1062){
@@ -124,7 +124,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`SELECT * FROM user WHERE email="${email}";`,
+                   connection.query(`SELECT * FROM users WHERE email="${email}";`,
                      (err, rows, fields)=>{
                            if (err) {
                                reject(err)
@@ -150,7 +150,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`UPDATE user SET fail_a=fail_a+1, fail_date=UNIX_TIMESTAMP()*1000 WHERE user_id=?;`,
+                   connection.query(`UPDATE users SET fail_a=fail_a+1, fail_date=UNIX_TIMESTAMP()*1000 WHERE user_id=?;`,
                    [ user_id],
                      (err, rows, fields)=>{
                            if (err) {
@@ -178,7 +178,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`UPDATE user SET fail_a=0 WHERE user_id=? ;`,
+                   connection.query(`UPDATE users SET fail_a=0 WHERE user_id=? ;`,
                    [user_id],
                      (err, rows, fields)=>{
                            if (err) {
