@@ -199,14 +199,14 @@ class MysqlLayer {
         });
     }
 
-
-
-
-
-   
-
-
 }
+
+/*******************/
+class StorageRedis{
+   
+}
+
+
    /************* */
 class StorageOfSessions {
     #mysqlPool;
