@@ -130,7 +130,7 @@ class Sessions {
         //---1) Making key pair
         keyPair = await this.#keygen();
         //---2) When the sessions with this user exists - remove it:
-         await this.#storage.clearSessionWhenExists(user_id);
+         await this.#storage.clearSessionWhenExists(BigInt(user_id));
         //---3) Generate ID of session (two component);
         while (sessionExists) {
             // try to generate ID of the sessoin
@@ -139,7 +139,7 @@ class Sessions {
             sessionExists = await this.#storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
         }
         //---4) issuance data and expiration (token and session) threshold
-        issued = Date.now();
+        issued = BigInt( Date.now());
         activeUntil = BigInt(Date.now()) + this.#sessionExpirationLimit;
         
          
@@ -156,11 +156,11 @@ class Sessions {
         await this.#storage.createUserSession({
            hi_p: sessionIds.high, 
            lo_p: sessionIds.low, 
-           user_id: user_id, 
+           user_id: BigInt(user_id), 
            expired: activeUntil,
             priv_k: keyPair.privateKey, 
             pub_k: keyPair.publicKey, 
-            last_d: issued-2
+            last_d: issued-BigInt(2),
         });
         
         //---9) return base64url session ID token:

@@ -49,7 +49,7 @@ router.post('/', async (req, res)=>{
                 res.sendStatus(400);
             }
     } catch (e){
-        res.status(500).json(e);
+        res.status(500).end(e.toString());
         return;
     }
 

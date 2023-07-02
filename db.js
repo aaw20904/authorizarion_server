@@ -214,9 +214,11 @@ class StorageOfSessions {
         this.#mysqlPool = pool;
     }
 
-    async isSessionExists({hi_p=1, lo_p=2}){
-    
+    async isSessionExists({hi_p=BigInt(1), lo_p=BigInt(2)}){
+      
+      
         return new Promise((resolve, reject) => {
+          
                this.#mysqlPool.getConnection((err, connection)=>{
                   if (err) {
                       reject(err);
@@ -243,8 +245,8 @@ class StorageOfSessions {
        
       }
 
-      async getSessionById({hi_p=1, lo_p=2}){
-    
+      async getSessionById({hi_p=BigInt(3), lo_p=BigInt(7)}){
+         
         return new Promise((resolve, reject) => {
             this.#mysqlPool.getConnection((err, connection)=>{
                   if (err) {
@@ -272,7 +274,8 @@ class StorageOfSessions {
        
       }
 
-    async clearSessionWhenExists(user_id) {
+    async clearSessionWhenExists(user_id=BigInt(5)) {
+       
         return new Promise((resolve, reject) => {
             this.#mysqlPool.getConnection((err, connection)=>{
                if (err) {
@@ -299,7 +302,8 @@ class StorageOfSessions {
         });
     }
 
-    async createUserSession ({hi_p=0, lo_p=0, user_id="123",expired=1, priv_k, pub_k, last_d=1}) {
+    async createUserSession ({hi_p=BigInt(1), lo_p=BigInt(2), user_id=BigInt(3),expired=BigInt(4), priv_k, pub_k, last_d=BigInt(5)}) {
+      
         return new Promise((resolve, reject) => {
             this.#mysqlPool.getConnection((err, connection)=>{
                if (err) {
@@ -328,7 +332,8 @@ class StorageOfSessions {
     } 
 
 
-    async updateSessionTimestamps ({hi_p=0, lo_p=0, expired=1, last_d=1}) {
+    async updateSessionTimestamps ({hi_p=BigInt(1), lo_p=BigInt(2), expired=BigInt(3), last_d=BigInt(4)}) {
+       
         return new Promise((resolve, reject) => {
             this.#mysqlPool.getConnection((err, connection)=>{
                if (err) {
