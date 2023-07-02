@@ -139,7 +139,7 @@ class StorageSessioonsOnRedis{
             session.expired = expired;
             session.last_d = last_d;
             //save
-            return await this.#client.set(sessionKey, session);
+            return await this.#client.set(sessionKey, this.#objToB64String(session));
          
 
          }

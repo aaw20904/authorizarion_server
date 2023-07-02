@@ -228,7 +228,7 @@ class Sessions {
         //10) Return a new token
         return {
                 token:`${b64highId}${b64lowId}${b64Issued}${b64signature}`, 
-                user_id:storedSession.user_id
+                user_id: storedSession.user_id.toString()
                };
 
     }
