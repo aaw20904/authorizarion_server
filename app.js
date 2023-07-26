@@ -16,6 +16,8 @@ const port = 8080;
 async function main_proc(){
     //db pool init
     let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
+    //when tables absent - create it:
+    await rdbmsLayer.initDb();
     //create mysql storage
     //let store = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
     let store = new redisStore.StorageSessioonsOnRedis();

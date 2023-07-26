@@ -18,6 +18,29 @@ class MysqlLayer {
 
     async initDb(){
 
+        await new Promise((resolve, reject) => {
+            this.#bdPool.getConnection((err, connection)=>{
+            if (err) {
+                reject(err);
+            } else {
+                connection.query("CREATE TABLE IF NOT EXISTS `user_mail` ("+
+                    " `email` VARCHAR(45) NOT NULL, "+
+                    " `user_id` BIGINT UNSIGNED NULL AUTO_INCREMENT," +
+                    " PRIMARY KEY (`email`),"+
+                    " UNIQUE INDEX `user_id_UNIQUE` (`user_id` ASC) VISIBLE);" ,
+                    (err, rows, fields)=>{
+                        if (err) {
+                            reject(err)
+                        } else {
+                                // Release the connection back to the pool
+                            connection.release();
+                            resolve(rows);
+                        }
+                })
+            }
+            })
+        });
+
             await new Promise((resolve, reject) => {
                 this.#bdPool.getConnection((err, connection)=>{
                 if (err) {
@@ -52,28 +75,7 @@ class MysqlLayer {
                 })
             });
 
-            await new Promise((resolve, reject) => {
-                this.#bdPool.getConnection((err, connection)=>{
-                if (err) {
-                    reject(err);
-                } else {
-                    connection.query("CREATE TABLE IF NOT EXISTS `user_mail` ("+
-                        " `email` VARCHAR(45) NOT NULL, "+
-                        " `user_id` BIGINT UNSIGNED NULL AUTO_INCREMENT," +
-                        " PRIMARY KEY (`email`),"+
-                        " UNIQUE INDEX `user_id_UNIQUE` (`user_id` ASC) VISIBLE);" ,
-                        (err, rows, fields)=>{
-                            if (err) {
-                                reject(err)
-                            } else {
-                                    // Release the connection back to the pool
-                                connection.release();
-                                resolve(rows);
-                            }
-                    })
-                }
-                })
-            });
+  
 
     }
 
@@ -143,7 +145,7 @@ class MysqlLayer {
                 if (err) {
                     reject(err);
                 } else {
-                    connection.query('INSERT INTO users ( user_id, passw, picture, name,  salt, phone) VALUES (?, ?, ?, ?, ?)',
+                    connection.query('INSERT INTO users ( user_id, passw, picture, uname,  salt, phone) VALUES (?, ?, ?, ?, ?, ?)',
                         [generatedUserId, par.password, par.picture, par.name, par.salt, par.phone], (err, rows, fields)=>{
                             if (err) {
                                 if(err.errno === 1062){
@@ -205,7 +207,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`SELECT * FROM users INNER JOIN user_mail WHERE user_mail.email="${email}" AND user.user_id=user_mail.user_id;`,
+                   connection.query(`SELECT * FROM users INNER JOIN user_mail WHERE user_mail.email="${email}" AND users.user_id=user_mail.user_id;`,
                      (err, rows, fields)=>{
                            if (err) {
                                reject(err)
