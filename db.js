@@ -18,64 +18,62 @@ class MysqlLayer {
 
     async initDb(){
 
-        await new Promise((resolve, reject) => {
-            this.#bdPool.getConnection((err, connection)=>{
-               if (err) {
-                   reject(err);
-               } else {
-                   connection.query("CREATE TABLE IF NOT EXISTS users ("+
-                   " user_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,"+
-                   "email VARCHAR(45) NOT NULL,"+
-                   "passw BLOB NULL,"+
-                   "salt BLOB NULL"+
-                   "fail_a INT  DEFAULT 0"+
-                   "fail_date INT  DEFAULT 0"+
-                   " picture BLOB NULL,"+
-                   "name VARCHAR(45) NULL,"+
-                  " PRIMARY KEY (user_id)," +
-                  " UNIQUE INDEX email (email) VISIBLE);" ,
-                       (err, rows, fields)=>{
-                           if (err) {
-                               reject(err)
-                           } else {
-                                 // Release the connection back to the pool
-                               connection.release();
-                               resolve(rows);
-                           }
-                   })
-               }
-            })
-        });
+            await new Promise((resolve, reject) => {
+                this.#bdPool.getConnection((err, connection)=>{
+                if (err) {
+                    reject(err);
+                } else {
+                    connection.query("CREATE TABLE IF NOT EXISTS `users` ("+
+                        " `user_id` BIGINT UNSIGNED NOT NULL,"+
+                        " `passw` BLOB NULL, "+
+                        " `picture` BLOB NULL, "+
+                        " `uname` VARCHAR(32) NULL, "+
+                        " `salt` BLOB NULL, "+
+                        " `fail_a` INT NULL, "+
+                        " `fail_date` INT NULL, "+
+                        " `phone` VARCHAR(32) NULL, "+
+                    " PRIMARY KEY (`user_id`),"+
+                    // " CONSTRAINT `fk_user_id_user_m` "+
+                        " FOREIGN KEY (`user_id`) "+
+                        " REFERENCES `my_bot`.`user_mail` (`user_id`)" +
+                        " ON DELETE CASCADE "+
+                        " ON UPDATE NO ACTION);"
+                    ,
+                        (err, rows, fields)=>{
+                            if (err) {
+                                reject(err)
+                            } else {
+                                    // Release the connection back to the pool
+                                connection.release();
+                                resolve(rows);
+                            }
+                    })
+                }
+                })
+            });
 
-        return new Promise((resolve, reject) => {
-            this.#bdPool.getConnection((err, connection)=>{
-               if (err) {
-                   reject(err);
-               } else {
-                   connection.query("CREATE TABLE IF NOT EXISTS session ("+
-                   "hi_p BIGINT UNSIGNED NOT NULL,"+
-                   "lo_p BIGINT UNSIGNED NOT NULL,"+
-                   "user_id BIGINT UNSIGNED NOT NULL,"+
-                   "expired BIGINT UNSIGNED NULL,"+
-                   "priv_k BLOB NULL,"+
-                   "pub_k BLOB NULL,"+
-                   "last_d BIGINT UNSIGNED NULL,"+
-                   "PRIMARY KEY (hi_p, lo_p),"+
-                   "FOREIGN KEY (user_id) REFERENCES user(user_id)   ON DELETE CASCADE);" ,
-                       (err, rows, fields)=>{
-                           if (err) {
-                               reject(err)
-                           } else {
-                                 // Release the connection back to the pool
-                               connection.release();
-                               resolve(rows);
-                           }
-                   })
-               }
-            })
-        });
-
-   
+            await new Promise((resolve, reject) => {
+                this.#bdPool.getConnection((err, connection)=>{
+                if (err) {
+                    reject(err);
+                } else {
+                    connection.query("CREATE TABLE IF NOT EXISTS `user_mail` ("+
+                        " `email` VARCHAR(45) NOT NULL, "+
+                        " `user_id` BIGINT UNSIGNED NULL AUTO_INCREMENT," +
+                        " PRIMARY KEY (`email`),"+
+                        " UNIQUE INDEX `user_id_UNIQUE` (`user_id` ASC) VISIBLE);" ,
+                        (err, rows, fields)=>{
+                            if (err) {
+                                reject(err)
+                            } else {
+                                    // Release the connection back to the pool
+                                connection.release();
+                                resolve(rows);
+                            }
+                    })
+                }
+                })
+            });
 
     }
 
@@ -92,14 +90,61 @@ class MysqlLayer {
          })
      }
 
-    async createNewUser(par={name:"",password:"", email:"example@mail.com", picture:"123", passw:0, salt:0}){
-         return new Promise((resolve, reject)=> {
+    async createNewUser(par={name:"",password:"", email:"example@mail.com", picture:"123", passw:0, salt:0, phone:"911"}){
+     try{
+        await new Promise((resolve, reject)=> {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query('START TRANSACTION;',
+                       (err, rows, fields)=>{
+                           if (err) {
+                             
+                               reject(err)
+                           } else {
+                                
+                               resolve(true);
+                           }
+                   })
+               }
+            })
+        });
+        //firstly fill a user_mail table:
+        let generatedUserId = await new Promise((resolve, reject)=> {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query('INSERT INTO user_mail ( email) VALUES (?)',
+                       [par.email], (err, insResult)=>{
+                           if (err) {
+                               if(err.errno === 1062){
+                                   err.alrEx = true;
+                               } else{
+                                   err.alrEx =false;
+                               }
+                               reject(err)
+                           } else {
+                                 // Release the connection back to the pool
+                               connection.release();
+                               resolve(insResult);
+                           }
+                   })
+               }
+            })
+        });
+        //get user_id that has recently been generated (in prev step)
+        generatedUserId =  generatedUserId.insertId;
+        
+        //seconly inserting into "users"
+         await new Promise((resolve, reject)=> {
              this.#bdPool.getConnection((err, connection)=>{
                 if (err) {
                     reject(err);
                 } else {
-                    connection.query('INSERT INTO users ( email, passw, picture, name,  salt) VALUES (?, ?, ?, ?, ?)',
-                        [par.email, par.password, par.picture, par.name, par.salt], (err, rows, fields)=>{
+                    connection.query('INSERT INTO users ( user_id, passw, picture, name,  salt, phone) VALUES (?, ?, ?, ?, ?)',
+                        [generatedUserId, par.password, par.picture, par.name, par.salt, par.phone], (err, rows, fields)=>{
                             if (err) {
                                 if(err.errno === 1062){
                                     err.alrEx = true;
@@ -116,6 +161,42 @@ class MysqlLayer {
                 }
              })
          });
+
+         await new Promise((resolve, reject)=> {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query('COMMIT;',
+                       (err, rows, fields)=>{
+                           if (err) {
+                             
+                               reject(err)
+                           } else {
+                                
+                               resolve(true);
+                           }
+                   })
+               }
+            })
+        });
+        //error handling
+     }catch(e){
+        
+        return new Promise((resolve, reject)=> {
+            this.#bdPool.getConnection((err, connection)=>{
+               if (err) {
+                   reject(err);
+               } else {
+                   connection.query('COMMIT;',
+                       (err, rows, fields)=>{
+                        reject(e);
+                   })
+               }
+            })
+        });
+     }
+        
     }
 
     async getUserByEmail (email) {
@@ -124,7 +205,7 @@ class MysqlLayer {
                if (err) {
                    reject(err);
                } else {
-                   connection.query(`SELECT * FROM users WHERE email="${email}";`,
+                   connection.query(`SELECT * FROM users INNER JOIN user_mail WHERE user_mail.email="${email}" AND user.user_id=user_mail.user_id;`,
                      (err, rows, fields)=>{
                            if (err) {
                                reject(err)

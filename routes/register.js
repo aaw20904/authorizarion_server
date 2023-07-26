@@ -75,7 +75,7 @@ router.get("/test", async(req,res)=>{
 router.post("/begin_registration", async function (req, res, next) {
   console.log(router._256);
   //get data from request 
- if (Boolean(req.body.email) & Boolean(req.body.name) & Boolean(req.body.password)) {
+ if (Boolean(req.body.email) & Boolean(req.body.name) & Boolean(req.body.password) &  Boolean(req.body.phone)) {
     //Checking- is the email exists in the database
        if (await router.rdbmsLayer.getUserByEmail(req.body.email)) {
            res.status(409).json({error:"exists"});
@@ -86,7 +86,7 @@ router.post("/begin_registration", async function (req, res, next) {
         ...req.body,
         exp: Date.now()+(10*60000) //5 min expiration time
       }
-      //converting to string and erncrypting
+      //converting to string and encrypting
       let jsonString = JSON.stringify(userRegistrationInfo);
       let bufferOfData = Buffer.from(jsonString)
       let encryptedData = crypto.publicEncrypt(router._cryptoKeys.publicKey, bufferOfData);
@@ -144,6 +144,7 @@ router.get("/register_finish",async (req,res)=>{
           salt: hashedPassword.salt,
           password: hashedPassword.key,
           email: userInformation.email,
+          phone: userInformation.phone,
           picture: 0,
         })
      } catch (e) {
