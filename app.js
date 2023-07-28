@@ -15,13 +15,15 @@ const port = 8080;
 
 async function main_proc(){
     //db pool init
-    let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot",password:"65535258",user:"root",host:"localhost"});
+    let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot", password:"65535258", user:"root", host:"localhost"});
     //when tables absent - create it:
     await rdbmsLayer.initDb();
+    
     //create mysql storage
     //let store = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
     let store = new redisStore.StorageSessioonsOnRedis();
     await  store.init();
+
     //create sessions factory
     let sessions = new sessionL(store);
 
@@ -29,7 +31,7 @@ async function main_proc(){
     loginRouter.router.rdbmsLayer = rdbmsLayer;
     loginRouter.router.sessionLayer = sessions;
     validationRouter.router.sessions = sessions;
-
+    
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use('/register', registerRouter.router);
@@ -39,6 +41,11 @@ async function main_proc(){
 }
 
 main_proc();
+
+process.on("exit", async()=>{
+  await rdbmsLayer.closeDatabase();
+  await store.deInit();
+})
 
 
 

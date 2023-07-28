@@ -6,7 +6,7 @@ class Sessions {
     #idGen;
     #uint64ToBase64url;
     #base64urlToUint64;
-  
+    #limitOfTimeoutExtension;
     #createDigitalSignature;
     #verifyDigitalSignature;
     #sessionExpirationLimit;
@@ -14,14 +14,44 @@ class Sessions {
     #sessionExtendTime;
     #storage;
     constructor (storage, sessionParams={///all the time are in milliSeconds
-            sessionExtensionTime:BigInt(1000 * 60 * 10), //this value has been added after successfull verification to session lifetime in a storage
-            sessionLifeTime:BigInt(1000 * 60 * 60), //lifetime of session. This value seved to the storage when a new session has been created
-            tokenLifeTime:BigInt(1000 * 60 * 5), ///lifetime of token.This value stays the same during all time of life of a session
+            sessionExtensionTime: BigInt(1000 * 60 * 2), //this value has been added after successfull verification to session lifetime in a storage
+            sessionLifeTime: BigInt(1000 * 60 * 2), //lifetime of session. This value saved to the storage when a new session has been created
+            tokenLifeTime: BigInt(1000 * 60 * 8), ///lifetime of token.This value stays the same during all time of life of a session
+            limitOfTimeoutExtension: BigInt(1000 * 60 * 7),
     }) {
+        /** T I M E O U T  E X T E N S I O N   E X P L A N A T I O N
+         NOTE. Imagine and suppose: we have time - 12:00. 
+          this.#sessionExpirationLimit = 30min,
+          this.#sessionExtendTime  = 5min,
+          this.#limitOfTimeoutExtension = 50min
+          Expiration timeout holds in storage as "expired"
+
+          "expired" = session_create_time + this.#sessionExpirationLimit
+                                 =  11:50 + 30min = 12:20. 
+        
+          
+          When  user authenticated successfully (using Bearer token):
+            Firstly: we checking - can we extends a timeout?
+
+           ("expired" - NOW() ) <  this.#limitOfTimeoutExtension  ?
+                             20 < 50 - yes! We can!
+
+          And "expired" will be extended:
+                 "expired" + this.#sessionExtendTime = 12:20 + 5min = 12:25.
+        
+        suppose - we have "expired" = 12:55, checking-
+
+          ("expired" - NOW() ) <  this.#limitOfTimeoutExtension  ?
+                 (12:55-12:00) > 50 - No! We can`t! 
+        
+       So, we don`t extend the timeout - because it is bigf enough for us.
+           
+         */
         this.#storage = storage;
         this.#sessionExtendTime = sessionParams.sessionExtensionTime;//add to session expiration time when successfuly validated
         this.#sessionExpirationLimit = sessionParams.sessionLifeTime; //one hour
         this.#tokenExpirationLimit = sessionParams.tokenLifeTime; //5 minutes - lifetime of the token
+        this.#limitOfTimeoutExtension = sessionParams.limitOfTimeoutExtension;
             ///input data  - base64url string, output signature - base64
           this.#createDigitalSignature = async (privateKey, data, passphrase='cat')=>{
                 return new Promise((resolve, reject) => {
@@ -40,7 +70,7 @@ class Sessions {
                 });
             
           }
-              //signature and data are in base64url
+              //s i g n a t u r e   and  d a t a are in base64url
           this.#verifyDigitalSignature = async (publicKey, data, signatureToVerify)=>{
             return new Promise((resolve, reject) => {
                         crypto.verify('sha256', Buffer.from(data,'base64url'), {
@@ -56,7 +86,7 @@ class Sessions {
             });
          
           }
-      
+      //conver UINT64 to Base64url
         this.#uint64ToBase64url = (numToDec=256) => {
           let myBuf = Buffer.allocUnsafe(8);
           myBuf.writeBigUInt64BE(BigInt(numToDec));
@@ -118,9 +148,9 @@ class Sessions {
         return this.#uint64ToBase64url(num)
     }
                 /**
-
-            ▀█▀ █▀█ █▄▀ █▀▀ █▄░█   █▀▀ █▀▀ █▄░█
-            ░█░ █▄█ █░█ ██▄ █░▀█   █▄█ ██▄ █░▀█
+          
+█▀▄▀█ ▄▀█ █▄▀ █▀▀   █▄░█ █▀▀ █░█░█   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█
+█░▀░█ █▀█ █░█ ██▄   █░▀█ ██▄ ▀▄▀▄▀   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█
                 */
     async createNewSession(user_id){
         
@@ -175,7 +205,7 @@ class Sessions {
         ▀▄▀ ██▄ █▀▄ █ █▀░ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█
     */
     async verifyUserSession (token) {
-        let  sessionIds, highId, lowId, keyPair, sessionToken, b64signature, issued, activeUntil,
+        let   highId, lowId,  b64signature, issued,  updatedExpirationTime,
         b64highId, b64lowId, b64Issued, storedSession, resultOfVerification;
         //1)parse parameters;
         b64highId = token.slice(0,11);
@@ -186,28 +216,31 @@ class Sessions {
         highId = this.#base64urlToUint64(b64highId);
         lowId = this.#base64urlToUint64(b64lowId);
         issued = this.#base64urlToUint64(b64Issued);
-        //3)get the session;
+        //3) Has the  token been expired?
+          if(BigInt(Date.now()) > BigInt(issued) + this.#tokenExpirationLimit){
+            return false;
+        }
+        //4)get the session;
         storedSession = await this.#storage.getSessionById({hi_p:highId, lo_p:lowId});
+        ///dbg
+        console.log('\x1b[33m',"Session expiration:",new Date(Number(storedSession.expired)).toLocaleString(),'\x1b[0m');
         //Is the session exists?:
         if(!storedSession){
             return false;
         }
-        //4) Has a session been expired?
+        //5) Has a session been expired?
         if(BigInt(Date.now()) > BigInt(storedSession.expired) ){
             return false;
         }
-        //4.A) Has the session token been expired?
-        if(BigInt(Date.now()) > BigInt(issued) + this.#tokenExpirationLimit){
-            return false;
-        }
-        //5) Has a session been reused?
+      
+        //6) Has a session been reused?
         let lastSavedTimeStamp = BigInt(storedSession.last_d);
         if ( lastSavedTimeStamp === issued) {
             //remove a session
             await this.#storage.clearSessionWhenExists(storedSession.user_id);
             return false;
         }
-        //6)Is a digital signature valid?
+        //7)Is a digital signature valid?
         try {
             resultOfVerification = await this.#verifyDigitalSignature(storedSession.pub_k,`${b64highId}${b64lowId}${b64Issued}`,b64signature);
         } catch(e) {
@@ -219,8 +252,18 @@ class Sessions {
          //when a signature isn`t valid
             return false;
         }
-        //7) Saving iss that has been received into storage and extends expiration time:
-          await this.#storage.updateSessionTimestamps({hi_p:highId, lo_p:lowId, expired: BigInt(storedSession.expired) + this.#sessionExtendTime, last_d:issued});
+        updatedExpirationTime = storedSession.expired;
+        //7.1)Checking: can we extends expiration?
+         if( (storedSession.expired - BigInt(Date.now())) < this.#limitOfTimeoutExtension ) {
+            //extends lifetime
+             updatedExpirationTime +=  this.#sessionExtendTime;
+
+         } else{
+            //stay the same lifetime
+            updatedExpirationTime = storedSession.expired;
+         }
+        //7.2) Saving iss that has been received into storage and extends expiration time:
+          await this.#storage.updateSessionTimestamps({hi_p:highId, lo_p:lowId, expired: BigInt(updatedExpirationTime), last_d:issued});
         //8) Updtae issuance time of the token (refresh):
           b64Issued = this.#uint64ToBase64url(Date.now());
         //9) Create a new signature:
@@ -231,6 +274,52 @@ class Sessions {
                 user_id: storedSession.user_id.toString()
                };
 
+    }
+    /*
+    
+█▀█ █▀▀ █▀▄▀█ █▀█ █░█ █▀▀   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█
+█▀▄ ██▄ █░▀░█ █▄█ ▀▄▀ ██▄   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█
+    */
+
+    async removeSession(token) {
+        let   highId, lowId,  b64signature, issued, resultOfVerification,
+        b64highId, b64lowId, b64Issued, storedSession;
+        //1)parse parameters;
+        b64highId = token.slice(0,11);
+        b64lowId = token.slice(11,22);
+        b64Issued = token.slice(22,33);
+        b64signature = token.slice(33, token.length);
+        //2)converting to values
+        highId = this.#base64urlToUint64(b64highId);
+        lowId = this.#base64urlToUint64(b64lowId);
+        issued = this.#base64urlToUint64(b64Issued);
+        //3) Has the  token been expired?
+          if(BigInt(Date.now()) > BigInt(issued) + this.#tokenExpirationLimit){
+            return false;
+        }
+        //4)get the session;
+        storedSession = await this.#storage.getSessionById({hi_p:highId, lo_p:lowId});
+        //5)Is the session exists?
+        if(storedSession) {
+            //6)Is a digital signature valid?
+                try {
+                    resultOfVerification = await this.#verifyDigitalSignature(storedSession.pub_k,`${b64highId}${b64lowId}${b64Issued}`,b64signature);
+                } catch(e) {
+                    //when an error as been occured during verification
+                    return false;
+                }
+
+                if (!resultOfVerification) {
+                //when a signature isn`t valid
+                    return false;
+                }
+            //7)remove  a session
+            await this.#storage.clearSessionWhenExists(storedSession.user_id);
+            return true;
+        } else {
+             return false;
+        }
+       
     }
 }
 

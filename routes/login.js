@@ -5,9 +5,10 @@ const passwordClass = require("../password_hash");
 
 let passwordValidator = new passwordClass.PasswordHash();
 
-router._maximumFailUserLoginAttempts = 3; //maximum fail login attempts
-router._blockingTime = BigInt( (1000 * 60 * 3) ) //3 minutes - blocking time since the maximum count of fail logins been achived
-router._adminsBlockingCode = 30000;// ADMIN code for blocking a user.It`s only code for recognize. It can be more that maximum fail attempts threshold.
+router._maximumFailUserLoginAttempts = 4; //maximum fail login attempts
+router._blockingTime = BigInt( (1000 * 60 * 2) ) //3 minutes - blocking time since the maximum count of fail logins been achived.When a period has been ellapsed - user unlocked
+router._adminsBlockingCode = 30000; // ADMIN code for blocking a user. It`s only constant for recognize admin`s blocking. 
+                                   //It can be more that maximum fail attempts threshold.
 
 router.post('/', async (req, res)=>{
     try{
@@ -56,6 +57,8 @@ router.post('/', async (req, res)=>{
    
 
 })
+
+
 
 
 module.exports={router}

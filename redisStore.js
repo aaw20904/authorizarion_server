@@ -1,20 +1,27 @@
 const redis = require('redis');
 const util = require('util');
+/*
+
+
+█▀ ▀█▀ ▄▀█ █▀█ ▀█▀   █▀█ █▀▀ █▀▄ █ █▀   █▀ █▀▀ █▀█ █░█ █▀▀ █▀█   █▀▄▀█ ▄▀█ █▄░█ █░█ ▄▀█ █░░ █░░ █▄█ █
+▄█ ░█░ █▀█ █▀▄ ░█░   █▀▄ ██▄ █▄▀ █ ▄█   ▄█ ██▄ █▀▄ ▀▄▀ ██▄ █▀▄   █░▀░█ █▀█ █░▀█ █▄█ █▀█ █▄▄ █▄▄ ░█░ ▄
+*/
+
+/**
+ * THe maximum lifetime of stored session defines explicity when session
+ * created: in the method createUSerSession() by the parameter "expired" in milliSecs
+ */
 class StorageSessioonsOnRedis{
     #client;
     #rdbms;
-    #sessionLifeTime;
-   
     #convertUserKey;
     #convertSessionKey;
   
     #b64stringToObj;
     #objToB64String;
 
-    constructor(sessionMaxLifeTime=(60*14*60)/**in Seconds */) {
+    constructor() {
     
-        this.#sessionLifeTime = sessionMaxLifeTime;
-        
         this.#client =  redis.createClient();
         this.#client.on('error', err => console.log('Redis Client Error', err));
 
@@ -55,42 +62,47 @@ class StorageSessioonsOnRedis{
        async init(){
         await this.#client.connect();
        }
-
+ /**must be call when server turn off */
        async deInit(){
         await this.#client.disconnect();
        }
 /**create a session with lifetime value that has been received as constructor arg */
+/**
+ 
+█▀▀ █▀█ █▀▀ ▄▀█ ▀█▀ █▀▀   █░█ █▀ █▀▀ █▀█   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█
+█▄▄ █▀▄ ██▄ █▀█ ░█░ ██▄   █▄█ ▄█ ██▄ █▀▄   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█
+ */
         async createUserSession ({
             hi_p = 1/**8 Bytes */,
             lo_p = 2/**8 bytes */,
             user_id = 3 /**8 bytes */, 
-            expired = 8 /*8 bytes*/,
+            expired = 8 /*8 bytes. Maximum non-changable (when a session already exists) lifetime in milliSec of a session.Whwn expired - session has ben removed by Redis immediately*/,
             priv_k = 0 /**256 bytes */,
             pub_k = 0 /**256 bytes */, 
             last_d = 1 /**8 bytes */}) {
                 let user_idBuff, expiredBuf,last_dBuff;
-               
+               //calculate relation lifetime of a session in Sec:
+               let relationLifeTimeInSec = Number((expired - BigInt(Date.now()) ) / BigInt(1000));
                 //making data: 
                 let userData = this.#objToB64String({user_id,expired,priv_k, pub_k, last_d});
                 //making session key
                 let sessionKey = this.#convertSessionKey({hi_p,lo_p});
                 //making user key
                 let userKey = this.#convertUserKey(user_id);
-                //
-                //await this.#client.connect();
-                //transaction
-                return    await this.#client.multi()
-                    //store session
-                    .set(sessionKey,userData)
-                    //store user
-                    .set(userKey,sessionKey)
-                    //assign lifetime of a session:
-                    .expire(sessionKey, this.#sessionLifeTime)
-                    .expire(userKey, this.#sessionLifeTime)
-                    //
-                    .exec();
+                    await this.#client.set("myuniquevariable","testvariable",{EX:10});
+                    console.log(await this.#client.get("myuniquevariable"));
+                    //store session, add expiration time in Sec
+                    await this.#client.set(sessionKey,userData, {EX: relationLifeTimeInSec, NX: true});
+                    //store user, add expiratin time in Sec
+                    return  await this.#client.set(userKey,sessionKey,{EX: relationLifeTimeInSec, NX: true});
+                  
+                    
          }
-
+/**
+ * 
+█ █▀   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█   █▀▀ ▀▄▀ █ █▀ ▀█▀ █▀
+█ ▄█   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█   ██▄ █░█ █ ▄█ ░█░ ▄█
+ */
          async isSessionExists({hi_p=1, lo_p=2}){
               //making session key
             let sessionKey = this.#convertSessionKey({hi_p,lo_p});
@@ -102,8 +114,14 @@ class StorageSessioonsOnRedis{
             }
           
          }
-
+/**
+ * 
+█▀ █▀▀ █▀▀ █▀ █ █▀█   █▄▄ █▄█   █ █▀▄
+▄█ ██▄ ██▄ ▄█ █ █▄█   █▄█ ░█░   █ █▄▀
+ */
          async getSessionById({hi_p=1, lo_p=2}){
+
+            console.log(await this.#client.get("myuniquevariable"));
              //making session key
           let sessionKey = this.#convertSessionKey({hi_p, lo_p});
              //get session data
@@ -114,7 +132,11 @@ class StorageSessioonsOnRedis{
                return this.#b64stringToObj(rawData);
                
          }
+/*
 
+█▀▀ █░░ █▀▀ ▄▀█ █▀█   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█   █░█░█ █░█ █▀▀ █▄░█   █▀▀ ▀▄▀ █ █▀ ▀█▀ █▀
+█▄▄ █▄▄ ██▄ █▀█ █▀▄   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█   ▀▄▀▄▀ █▀█ ██▄ █░▀█   ██▄ █░█ █ ▄█ ░█░ ▄█
+*/
          async clearSessionWhenExists(user_id) {
             //making user key
             let userKey = this.#convertUserKey(user_id);
@@ -124,23 +146,37 @@ class StorageSessioonsOnRedis{
                 return false;
             }
                 //clear session 
-          return await this.#client.multi()
-                            .del(sessionId)
-                            .del(userKey)
-                            .exec()
+                       await this.#client.del(sessionId)
+               return await this.#client.del(userKey)
+                          
 
          }
 
+         /*
+         
+█░█ █▀█ █▀▄ ▄▀█ ▀█▀ █▀▀   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█   ▀█▀ █ █▀▄▀█ █▀▀ █▀ ▀█▀ ▄▀█ █▀▄▀█ █▀█ █▀
+█▄█ █▀▀ █▄▀ █▀█ ░█░ ██▄   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█   ░█░ █ █░▀░█ ██▄ ▄█ ░█░ █▀█ █░▀░█ █▀▀ ▄█
+         */
+
          async updateSessionTimestamps ({hi_p=0, lo_p=0, expired=1, last_d=1}) {
             let sessionKey = this.#convertSessionKey({hi_p,lo_p});
+            //making user key
             let sessionData = await this.#client.get(sessionKey);
+            //converting to an object
             let session = this.#b64stringToObj(sessionData);
+            //making user key
+            let userKey = this.#convertUserKey(session.user_id);
+
+             //calculate relation lifetime of a session in Sec:
+             let relationLifeTimeInSec = Number((expired - BigInt(Date.now()) ) / BigInt(1000));
             //update 
             session.expired = expired;
             session.last_d = last_d;
             //save
-            return await this.#client.set(sessionKey, this.#objToB64String(session));
-         
+             await this.#client.set(sessionKey, this.#objToB64String(session),{XX:true, EX:relationLifeTimeInSec});
+            //extends lifetime
+            await this.#client.expire(sessionKey, relationLifeTimeInSec,"XX");
+            await this.#client.expire(userKey, relationLifeTimeInSec,"XX");
 
          }
          

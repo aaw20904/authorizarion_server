@@ -4,8 +4,8 @@
     constructor(pool){
         this.#mysqlPool = pool;
     }
-
-    async initTable() {
+  // IMPORTANT NOTE ! call this method before using mysql storage
+    async initSessionTable() {
         await new Promise((resolve, reject) => {
             this.#bdPool.getConnection((err, connection)=>{
                 if (err) {
