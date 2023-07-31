@@ -21,7 +21,7 @@ router._cryptoKeys = {
 
 
 /****options of SMTP - i`s only options of your email service.This mail will be used for register of users  */
-router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:'http://192.168.0.121:8080/register/register_finish?'};
+router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:'http://localhost:8080/register/register_finish?'};
 
 router._sendRegistrationMsgToMail = async (par="b64urlString", n_user="")=>{
             // Create a transporter
@@ -131,10 +131,10 @@ router.get("/register_finish",async (req,res)=>{
      //restore an object:
      let userInformation = JSON.parse(decrypted);
      //is the token expired?
-     if (userInformation.exp < Date.now()){
+   /*  if (userInformation.exp < Date.now()){
         res.status(403).json({msg:"wrong or deprecated data!"});
         return false;
-     }
+     }*/
      //hashing password:
      let hashedPassword = await passwordHashing.hashingPassword (userInformation.password);
      //create a new user
@@ -148,7 +148,14 @@ router.get("/register_finish",async (req,res)=>{
           picture: 0,
         })
      } catch (e) {
-      res.status(500).render("serverfault",{time:new Date().toLocaleTimeString()});
+      if(e.alrEx){
+        res.sendStatus(409);
+        return;
+      }else{
+        res.status(500).render("serverfault",{time:new Date().toLocaleTimeString()});
+        return;
+      }
+      
      }
      // when the registration is successfull - redirect 
      res.redirect(router._redirectAddrWhenSucc);

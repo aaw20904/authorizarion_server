@@ -2,7 +2,7 @@ const express = require('express')
 const dbLayer  = require("./db");
 const sessionL = require("./sessions");
 const redisStore = require('./redisStore')
-
+const mysqlStore = require("./mySqlStore");
 
 // Require the router module
 let registerRouter = require('./routes/register');
@@ -20,9 +20,14 @@ async function main_proc(){
     await rdbmsLayer.initDb();
     
     //create mysql storage
-    //let store = new dbLayer.StorageOfSessions(rdbmsLayer.getMysqlPool());
-    let store = new redisStore.StorageSessioonsOnRedis();
-    await  store.init();
+   let store = new mysqlStore.StorageOfSessions(rdbmsLayer.getMysqlPool());
+   //int the store
+   await store.init();
+
+    /* when a store is Redis
+      let store = new redisStore.StorageSessioonsOnRedis();
+      await  store.init();
+    */
 
     //create sessions factory
     let sessions = new sessionL(store);
@@ -35,8 +40,8 @@ async function main_proc(){
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use('/register', registerRouter.router);
-    app.use('/login',loginRouter.router);
-    app.use('/validate',validationRouter.router);
+    app.use('/login', loginRouter.router);
+    app.use('/validate', validationRouter.router);
     app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 }
 

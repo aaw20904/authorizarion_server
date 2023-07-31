@@ -79,15 +79,19 @@ class MysqlLayer {
                 //apply 
                 await connection.commit();
                 
-            }catch(e){
+            }catch(err){
+                 let myErr = new Error(err);
                //has a user already exists?
                 if(err.errno === 1062){
-                    err.alrEx = true;
+                    myErr.alrEx = true;
                 } else{
-                    err.alrEx =false;
+                    myErr.alrEx =false;
                 }
+                
                 await connection.rollback();
-                throw new Error(e);
+               
+                
+                throw myErr;
             }finally{
                 connection.release();
             }
