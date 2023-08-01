@@ -14,10 +14,10 @@ class Sessions {
     #sessionExtendTime;
     #storage;
     constructor (storage, sessionParams={///all the time are in milliSeconds
-            sessionExtensionTime: BigInt(1000 * 60 * 2), //this value has been added after successfull verification to session lifetime in a storage
-            sessionLifeTime: BigInt(1000 * 60 * 2), //lifetime of session. This value saved to the storage when a new session has been created
-            tokenLifeTime: BigInt(1000 * 60 * 8), ///lifetime of token.This value stays the same during all time of life of a session
-            limitOfTimeoutExtension: BigInt(1000 * 60 * 7),
+            sessionExtensionTime: BigInt(1000 * 60 * 4), //this value has been added after successfull verification to session lifetime in a storage
+            sessionLifeTime: BigInt(1000 * 60 * 4), //lifetime of session. This value saved to the storage when a new session has been created
+            tokenLifeTime: BigInt(1000 * 60 * 16), ///lifetime of token.This value stays the same during all time of life of a session
+            limitOfTimeoutExtension: BigInt(1000 * 60 * 18),
     }) {
         /** T I M E O U T  E X T E N S I O N   E X P L A N A T I O N
          NOTE. Imagine and suppose: we have time - 12:00. 
@@ -252,15 +252,15 @@ class Sessions {
          //when a signature isn`t valid
             return false;
         }
-        updatedExpirationTime = storedSession.expired;
+        updatedExpirationTime = BigInt(storedSession.expired);
         //7.1)Checking: can we extends expiration?
-         if( (storedSession.expired - BigInt(Date.now())) < this.#limitOfTimeoutExtension ) {
+         if( (updatedExpirationTime - BigInt(Date.now())) < this.#limitOfTimeoutExtension ) {
             //extends lifetime
              updatedExpirationTime +=  this.#sessionExtendTime;
 
          } else{
             //stay the same lifetime
-            updatedExpirationTime = storedSession.expired;
+            //updatedExpirationTime = storedSession.expired;
          }
         //7.2) Saving iss that has been received into storage and extends expiration time:
           await this.#storage.updateSessionTimestamps({hi_p:highId, lo_p:lowId, expired: BigInt(updatedExpirationTime), last_d:issued});

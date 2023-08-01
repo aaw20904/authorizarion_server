@@ -227,11 +227,11 @@
         });
     } 
 
-    async updateSessionTimestamps ({hi_p=BigInt(1), lo_p=BigInt(2), expired=BigInt(3), last_d=BigInt(4)}) {
+    async updateSessionTimestamps (argums={hi_p:BigInt(1), lo_p:BigInt(2), expired:BigInt(3), last_d:BigInt(4)}) {
         let connection = await this.#mysqlPool.getConnection();
         try{
-            const [rows] = connection.query(`UPDATE session SET last_d=?, expired=? WHERE hi_p=? AND lo_p=?;`,
-                   [last_d, expired, hi_p, lo_p]);
+            const [rows] = await connection.query(`UPDATE session SET last_d=?, expired=? WHERE hi_p=? AND lo_p=?;`,
+                   [argums.last_d, argums.expired, argums.hi_p, argums.lo_p]);
             connection.release();
             return rows;
         } catch (err){
