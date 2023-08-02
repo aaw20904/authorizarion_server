@@ -131,10 +131,10 @@ router.get("/register_finish",async (req,res)=>{
      //restore an object:
      let userInformation = JSON.parse(decrypted);
      //is the token expired?
-   /*  if (userInformation.exp < Date.now()){
+     if (userInformation.exp < Date.now()){
         res.status(403).json({msg:"wrong or deprecated data!"});
         return false;
-     }*/
+     }
      //hashing password:
      let hashedPassword = await passwordHashing.hashingPassword (userInformation.password);
      //create a new user

@@ -165,7 +165,7 @@ class Sessions {
         while (sessionExists) {
             // try to generate ID of the sessoin
             sessionIds = await this.#idGen();
-            // checking - is there an another user`s sessions with the same primary key?
+            // checking - is there an another user`s sessions with the same ID (composite primary key)?
             sessionExists = await this.#storage.isSessionExists({hi_p:sessionIds.high, lo_p:sessionIds.low});
         }
         //---4) issuance data and expiration (token and session) threshold
@@ -223,7 +223,7 @@ class Sessions {
         //4)get the session;
         storedSession = await this.#storage.getSessionById({hi_p:highId, lo_p:lowId});
         ///dbg
-        console.log('\x1b[33m',"Session expiration:",new Date(Number(storedSession.expired)).toLocaleString(),'\x1b[0m');
+       // console.log('\x1b[33m',"Session expiration:",new Date(Number(storedSession.expired)).toLocaleString(),'\x1b[0m');
         //Is the session exists?:
         if(!storedSession){
             return false;
