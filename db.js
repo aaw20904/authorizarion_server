@@ -1,4 +1,4 @@
-const mysql = require('mysql2'); //database mamnagement system MySQL
+const mysql = require('mysql2'); //database mamnagement system MySQL---------------------------
 
 const mysqlPromise = require('mysql2/promise');
 
