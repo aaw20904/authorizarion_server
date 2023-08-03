@@ -1,5 +1,5 @@
-const express = require("express");
-let router = express.Router();
+ 
+let router = {}; 
 let nodemailer = require("nodemailer");
 const ejs = require('ejs');
 const querystring = require('querystring');
@@ -9,6 +9,7 @@ const passwordHashing = new psw.PasswordHash();
 
 const fs = require("fs");
 const { request } = require("http");
+const { resolve } = require("path");
 
 router._mailtemplate = fs.readFileSync("./views/mailregister.ejs",{encoding:"utf-8"});
 router._redirectAddrWhenSucc = "https://www.example.com"
@@ -61,24 +62,27 @@ router._sendRegistrationMsgToMail = async (par="b64urlString", n_user="")=>{
       });
 }
 
-router.get("/test", async(req,res)=>{
+router.testing =  async(req, res)=>{
     try{
         let result = await router._sendRegistrationMsgToMail({code:56415,user_name:"Wasya"});
-        res.status(200).json(result)
+         router._respondWithJsonData(res, result, 200);
+       
     }catch(e){
-        res.status(500).json({err:e});
+        router._respondWithJsonData(res,{err:e},500);
+ 
     }
 
-})
+}
 
-
-router.post("/begin_registration", async function (req, res, next) {
+//POST
+router.begin_registration =  async function (req, res, next) {
   console.log(router._256);
   //get data from request 
  if (Boolean(req.body.email) & Boolean(req.body.name) & Boolean(req.body.password) &  Boolean(req.body.phone)) {
     //Checking- is the email exists in the database
        if (await router.rdbmsLayer.getUserByEmail(req.body.email)) {
-           res.status(409).json({error:"exists"});
+          router._respondWithJsonData(res,{error:"exists"},409);
+   
            return false;
       }
       //generate user info 
@@ -96,27 +100,29 @@ router.post("/begin_registration", async function (req, res, next) {
       //send a letter
       try {
         await router._sendRegistrationMsgToMail(b64urlEncryptedData, req.body.name);
-      } catch(err) {
-        res.status(500).json(err);
-        return false;
+      } catch (err) {
+            router._respondWithJsonData(res, err, 500);
+     
+          return false;
       }
       //when success
-      res.status(200).json({ ...req.body});
-
+          router._respondWithJsonData(res,{...req.body},200);
+        
  } else {
-    res.status(400).send('');
+    res.statusCode = 400;
+    res.end('');
     return false;
   }
-})
-
-router.get("/register_finish",async (req,res)=>{
+}
+  //GET
+router.register_finish = async (req,res)=>{
   //example for verifying:
   //let resultat = await passwordHashing.verifyPassword ("voooooova", hashedPassword.key, hashedPassword.salt);
   //is there a parameter?
   let decrypted;
-  if(req.query.data){
+  if(req.body){
     //cnverting to Buffer
-    let binlake = Buffer.from(req.query.data,'base64url'); 
+    let binlake = Buffer.from(req.body.data,'base64url'); 
     //decrypt
      try{
        decrypted = crypto.privateDecrypt( {
@@ -124,15 +130,17 @@ router.get("/register_finish",async (req,res)=>{
                                             passphrase: router._cryptoKeys.password
                                           } , binlake);
      } catch(e){
-        res.status(403).json({msg:"wrong or deprecated data!"});
+        router._respondWithJsonData(res,{msg:"wrong or deprecated data!"},403);
+        
         return false;
      }
 
      //restore an object:
      let userInformation = JSON.parse(decrypted);
      //is the token expired?
-     if (userInformation.exp < Date.now()){
-        res.status(403).json({msg:"wrong or deprecated data!"});
+     if (userInformation.exp < Date.now()) {
+        router._respondWithJsonData(res,{msg:"wrong or deprecated data!"},403);
+    
         return false;
      }
      //hashing password:
@@ -140,31 +148,44 @@ router.get("/register_finish",async (req,res)=>{
      //create a new user
      try {
         await router.rdbmsLayer.createNewUser({
-          name: userInformation.name,
-          salt: hashedPassword.salt,
-          password: hashedPassword.key,
-          email: userInformation.email,
-          phone: userInformation.phone,
-          picture: 0,
+            name: userInformation.name,
+            salt: hashedPassword.salt,
+            password: hashedPassword.key,
+            email: userInformation.email,
+            phone: userInformation.phone,
+            picture: 0,
         })
      } catch (e) {
       if(e.alrEx){
-        res.sendStatus(409);
-        return;
+          res.statusCode = 409;
+          res.end('');
+          return;
       }else{
-        res.status(500).render("serverfault",{time:new Date().toLocaleTimeString()});
-        return;
+         router._respondWithJsonData(res,{time:new Date().toLocaleTimeString(), err:"Server error!"},500);
+          
+          return;
       }
       
      }
      // when the registration is successfull - redirect 
-     res.redirect(router._redirectAddrWhenSucc);
+      res.writeHead(302, { 'Location': router._redirectAddrWhenSucc });
+      res.end();
 
   } else {
-    res.status(403).json({msg:"wrong or deprecated data!"});
+    router._respondWithJsonData(res, {msg:"wrong or deprecated data!"}, 403);
     return false;
   }
 
-})
+}
+///method to sending 
+router._respondWithJsonData =   (res, obj, statusCode) => {
+   
+       let str = JSON.stringify(obj);
+        res.setHeader("Content-Type","application/json");
+        res.setHeader("Content-Length", str.length);
+        res.statusCode = statusCode;
+        res.end(str);
+ 
+}
 
 module.exports = {router}

@@ -1,13 +1,20 @@
 const querystring = require('querystring');
-
+const url = require('url');
 class myBodyParser {
     constructor(){
         //empty constructor
     } 
      
      //call this method FIRSTLY to read raw body`s data
-    async   firstlyRead(req) {
+    async   _firstlyRead(req) {
     return new Promise((resolve, reject) => {
+        //read body length
+            let contentLength = req.headers["content-length"];
+                    // If there is no content length or it's 0, there is no request body
+            if (isNaN(contentLength) || contentLength == '0') {
+                resolve(false);
+                return;
+            }
             let result = "";
 
             req.on("data", (chunk)=>{
@@ -25,7 +32,7 @@ class myBodyParser {
         });
     }
     //call this method AFTER first - to parse raw body
-    finalyParse(req, payload) {
+    _finalyParse(req, payload) {
         if(!payload){
             return false;
         }
@@ -44,6 +51,22 @@ class myBodyParser {
             return false;
         }
         return true;
+    }
+
+    async parseRequestsBody(req) {
+        //parse request 
+        let parsedUrl  = url.parse(req.url, true);
+        if (Object.keys(parsedUrl.query).length !== 0 ) {
+            req.body= parsedUrl.query;
+            return;
+        }
+
+        let rawData = await this._firstlyRead(req);
+        if(!rawData){
+            req.body = false;
+        }else {
+            this._finalyParse(req, rawData);
+        }
     }
  
 }

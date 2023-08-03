@@ -12,8 +12,8 @@ const onMainRequest = async (req,res)=>{
   console.log(req.headers["content-type"]);
   res.setHeader('Content-Type', 'application/json');
   //parse body
-    let rawBody =  await myParser.firstlyRead(req);
-    myParser.finalyParse(req,rawBody);
+    let rawBody =  await myParser.parseRequestsBody(req);
+     ;
   res.end(JSON.stringify({time: Date.now(), method: req.method, type: req.headers["content-type"] , parsed:req.body, url:req.url}));
 }
 
