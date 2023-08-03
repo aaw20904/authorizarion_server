@@ -2,8 +2,19 @@
 
 let router = {};// express.Router();
 /**The object router must have injected property 'sessions' */
+router._isB64UrlStringValid = (str) =>{
+    // Replace Base64URL specific characters and add padding if necessary
+    try{
+        const normalizedStr = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(str.length + (4 - str.length % 4) % 4, '=');
+        const buffer = Buffer.from(normalizedStr, 'base64');
+        return true;
+    }catch(e){
+        return false;
+    }
+}
 //POST
 router.validate = async (req, res)=>{
+  let startTime = Date.now();
     // Regular expression to match Base64url format
   const base64urlRegExp = /^[A-Za-z0-9_-]*$/;
  // 1) Is a token exists?
@@ -18,7 +29,7 @@ router.validate = async (req, res)=>{
       token = token.substring(7)
   }
   //2.1) Is a data in Base64?
-  if(! base64urlRegExp.test(token)) {
+  if(! router._isB64UrlStringValid(token)) {
     res.statusCode = 403;
       res.end();
     return
@@ -37,6 +48,8 @@ router.validate = async (req, res)=>{
       res.end();
     return;
   } else {
+    let execTime = Date.now()-startTime
+    console.log("Exec time in mSec:", execTime);
     router._respondWithJsonData(res,{...userInfo},200);
   
   }
