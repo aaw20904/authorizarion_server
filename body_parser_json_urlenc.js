@@ -1,30 +1,55 @@
 const querystring = require('querystring');
-async function bodyParse(req,res){
-    let payload =  await new Promise((resolve, reject) => {
-        let data = '';
-        req.on('data', chunk => {
-        data += chunk;
+
+class myBodyParser {
+    constructor(){
+        //empty constructor
+    } 
+     
+     //call this method FIRSTLY to read raw body`s data
+    async   firstlyRead(req) {
+    return new Promise((resolve, reject) => {
+            let result = "";
+
+            req.on("data", (chunk)=>{
+                result += chunk;
+            });
+
+            req.on("end", ()=>{
+                resolve(result);
+
+            })
+
+            req.on("error", (e)=>{
+                reject(e);
+            })
         });
-        req.on('end', () => {
-            resolve(data);
-        })
-    });
-    //when JSON:
-    if(req.headers["content-type"] == "application/json" ){
-        payload = JSON.parse(payload);
-        //injected result
-        req.body = payload;
+    }
+    //call this method AFTER first - to parse raw body
+    finalyParse(req, payload) {
+        if(!payload){
+            return false;
+        }
+        switch (req.headers["content-type"]) {
+            case "application/json":
+                payload = JSON.parse(payload);
+                //injects a result into request object
+                req.body = payload;
+            break;
+            case "application/x-www-form-urlencoded":
+                let myData = querystring.parse(payload);
+                ///injects a result into a requesrt object
+                req.body = myData;
+            break;
+            default:
+            return false;
+        }
         return true;
     }
-    //when urlencoded:
-    if(req.headers["content-type"] == "application/x-www-form-urlencoded"){
-     let myData = querystring.parse(payload);
-     ///injected result
-     req.body = myData;
-     return true; 
-    } else {
-        return false;
-    }
+ 
 }
 
-module.exports = bodyParse;
+
+
+
+
+module.exports = {myBodyParser};
