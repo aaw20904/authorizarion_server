@@ -16,7 +16,7 @@ if(cluster.isMaster) {
   })
 
 } else {
-  // work process
+  // work process main program - each CPU core runs by the one
     const url = require('url');
     const dbLayer  = require("./db");
     const sessionL = require("./sessions");
