@@ -76,7 +76,7 @@ router.testing =  async(req, res)=>{
 
 //POST
 router.begin_registration =  async function (req, res, next) {
-  console.log(router._256);
+  
   //get data from request 
  if (Boolean(req.body.email) & Boolean(req.body.name) & Boolean(req.body.password) &  Boolean(req.body.phone)) {
     //Checking- is the email exists in the database

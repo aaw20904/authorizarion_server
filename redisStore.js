@@ -90,7 +90,7 @@ class StorageSessioonsOnRedis{
                 //making user key
                 let userKey = this.#convertUserKey(user_id);
                     await this.#client.set("myuniquevariable","testvariable",{EX:10});
-                    console.log(await this.#client.get("myuniquevariable"));
+                    ///console.log(await this.#client.get("myuniquevariable"));
                     //store session, add expiration time in Sec
                     await this.#client.set(sessionKey,userData, {EX: relationLifeTimeInSec, NX: true});
                     //store user, add expiratin time in Sec
@@ -121,7 +121,7 @@ class StorageSessioonsOnRedis{
  */
          async getSessionById({hi_p=1, lo_p=2}){
 
-            console.log(await this.#client.get("myuniquevariable"));
+            //console.log(await this.#client.get("myuniquevariable"));
              //making session key
           let sessionKey = this.#convertSessionKey({hi_p, lo_p});
              //get session data
