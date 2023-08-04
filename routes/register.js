@@ -22,7 +22,7 @@ router._cryptoKeys = {
 
 
 /****options of SMTP - i`s only options of your email service.This mail will be used for register of users  */
-router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:'http://localhost:8080/register/register_finish?'};
+router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:'http://3.9.109.183:8080/register/register_finish?'};
 
 router._sendRegistrationMsgToMail = async (par="b64urlString", n_user="")=>{
             // Create a transporter

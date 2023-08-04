@@ -175,8 +175,8 @@ class StorageSessioonsOnRedis{
             //save
              await this.#client.set(sessionKey, this.#objToB64String(session),{XX:true, EX:relationLifeTimeInSec});
             //extends lifetime
-            await this.#client.expire(sessionKey, relationLifeTimeInSec,"XX");
-            await this.#client.expire(userKey, relationLifeTimeInSec,"XX");
+            await this.#client.expire(sessionKey, relationLifeTimeInSec);
+            await this.#client.expire(userKey, relationLifeTimeInSec);
 
          }
          

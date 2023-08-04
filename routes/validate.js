@@ -48,8 +48,8 @@ router.validate = async (req, res)=>{
       res.end();
     return;
   } else {
-    let execTime = Date.now()-startTime
-    console.log("Exec time in mSec:", execTime);
+    userInfo.execTime = Date.now()-startTime
+    
     router._respondWithJsonData(res,{...userInfo},200);
   
   }

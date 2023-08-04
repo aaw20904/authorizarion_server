@@ -37,16 +37,16 @@ if(cluster.isMaster) {
         let rdbmsLayer = new dbLayer.MysqlLayer({basename:"my_bot", password:"65535258", user:"root", host:"localhost"});
         //when tables absent - create it:
         await rdbmsLayer.initDb();
-        
-        //create mysql storage
-      let store = new mysqlStore.StorageOfSessions(rdbmsLayer.getMysqlPool());
-      //int the store
-      await store.init();
-
-        /* when a store is Redis
+        //**************************** */
+        //create mysql storage - when we use mysql sessin storage
+      //let store = new mysqlStore.StorageOfSessions(rdbmsLayer.getMysqlPool());
+      //init the store
+      //await store.init();
+            //********************** */
+        // when a store sessions is Redis
           let store = new redisStore.StorageSessioonsOnRedis();
           await  store.init();
-        */
+        
 
         //create sessions factory
         let sessions = new sessionL(store);
