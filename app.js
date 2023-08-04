@@ -1,5 +1,5 @@
 
-
+///to run in daemon mode - use PM2 
 const cluster = require("cluster");
 const numCPUs = require('os').cpus().length;
 
