@@ -15,6 +15,7 @@ router._isB64UrlStringValid = (str) =>{
 //POST
 router.validate = async (req, res)=>{
   let startTime = Date.now();
+  let startChecklingTime;  
     // Regular expression to match Base64url format
   const base64urlRegExp = /^[A-Za-z0-9_-]*$/;
  // 1) Is a token exists?
@@ -40,7 +41,7 @@ router.validate = async (req, res)=>{
       res.end();
     return
   }
-  
+  startChecklingTime = Date.now() - startTime;
   // 3) validate 
   let userInfo = await router.sessions.verifyUserSession(token);
   if (!userInfo) {
@@ -48,8 +49,8 @@ router.validate = async (req, res)=>{
       res.end();
     return;
   } else {
-    userInfo.execTime = Date.now()-startTime
-    
+    userInfo._commonExecRouteTime = Date.now() - startTime;
+    userInfo._startChecklingRouteTime = startChecklingTime;
     router._respondWithJsonData(res,{...userInfo},200);
   
   }

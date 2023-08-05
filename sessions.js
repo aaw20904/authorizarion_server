@@ -205,6 +205,8 @@ class Sessions {
         ▀▄▀ ██▄ █▀▄ █ █▀░ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█
     */
     async verifyUserSession (token) {
+        let redSessionData,verifiedSignatureTimestamp,updatedSessTimestamp, newSignatureTimestamp;
+        let verifyStartTimestamp = Date.now();
         let   highId, lowId,  b64signature, issued,  updatedExpirationTime,
         b64highId, b64lowId, b64Issued, storedSession, resultOfVerification;
         //1)parse parameters;
@@ -223,6 +225,7 @@ class Sessions {
         //4)get the session;
         storedSession = await this.#storage.getSessionById({hi_p:highId, lo_p:lowId});
         ///dbg
+        redSessionData = Date.now() - verifyStartTimestamp;
        // console.log('\x1b[33m',"Session expiration:",new Date(Number(storedSession.expired)).toLocaleString(),'\x1b[0m');
         //Is the session exists?:
         if(!storedSession){
@@ -247,6 +250,7 @@ class Sessions {
             //when an error as been occured during verification
             return false;
         }
+        verifiedSignatureTimestamp = Date.now() - verifyStartTimestamp;
 
         if (!resultOfVerification) {
          //when a signature isn`t valid
@@ -264,12 +268,14 @@ class Sessions {
          }
         //7.2) Saving iss that has been received into storage and extends expiration time:
           await this.#storage.updateSessionTimestamps({hi_p:highId, lo_p:lowId, expired: BigInt(updatedExpirationTime), last_d:issued});
-        //8) Updtae issuance time of the token (refresh):
+         updatedSessTimestamp = Date.now() - verifyStartTimestamp;
+          //8) Updtae issuance time of the token (refresh):
           b64Issued = this.#uint64ToBase64url(Date.now());
         //9) Create a new signature:
           b64signature = await this.#createDigitalSignature(storedSession.priv_k,`${b64highId}${b64lowId}${b64Issued}`);
-        //10) Return a new token
-        return {
+          newSignatureTimestamp = Date.now() - verifyStartTimestamp;
+          //10) Return a new token
+        return {redSessionData,verifiedSignatureTimestamp,updatedSessTimestamp, newSignatureTimestamp,
                 token:`${b64highId}${b64lowId}${b64Issued}${b64signature}`, 
                 user_id: storedSession.user_id.toString()
                };
