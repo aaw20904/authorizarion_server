@@ -26,6 +26,13 @@ class StorageSessioonsOnRedis{
         this.#client.on('error', err => console.log('Redis Client Error', err));
 
         this.#convertSessionKey = ({hi_p, lo_p})=>{
+            const buffer = Buffer.allocUnsafe(16);
+            buffer.writeBigInt64BE(BigInt(lo_p));
+            buffer.writeBigInt64BE(BigInt(hi_p), 8);
+            return buffer;
+        }
+        
+        /*{
             let bufHi, bufLo, res;
             bufHi = Buffer.allocUnsafe(8);
             bufLo = Buffer.allocUnsafe(8);
@@ -33,16 +40,26 @@ class StorageSessioonsOnRedis{
             bufLo.writeBigUint64BE(lo_p);
             res = Buffer.concat([bufHi,bufLo]);
             return res.toString("base64");
-        }
+        }*/
+
+
 
         this.#convertUserKey = (user_id)=>{
+           
+            const buffer = Buffer.allocUnsafe(8);
+            buffer.writeBigInt64BE(BigInt(user_id));
+            return buffer;
+        
+        }
+        
+        /* (user_id)=>{
             if (typeof value !== 'bigint') {
                  user_id = BigInt(user_id);
             }
            let bufK = Buffer.allocUnsafe(8);
             bufK.writeBigUint64BE(user_id);
             return bufK.toString('base64');
-        }
+        }*/
 
         this.#objToB64String = (inp={})=>{
                 let serilized = util.inspect(inp, { compact: true, breakLength: Infinity });
@@ -87,17 +104,10 @@ class StorageSessioonsOnRedis{
                 let userData = this.#objToB64String({user_id,expired,priv_k, pub_k, last_d});
                 //making session key
                 let sessionKey = this.#convertSessionKey({hi_p,lo_p});
-                    /// N E W 
-                    let compositeKeyBuffer = ArrayBuffer(16);
-                    compositeKeyBuffer[0] = lo_p;
-                    compositeKeyBuffer[1] = hi_p;
-                    sessionKey = compositeKeyBuffer;
+            
                 //making user key
                 let userKey = this.#convertUserKey(user_id);
-                    /// N E W
-                   let userKeyBuffer = ArrayBuffer(8); //64bit
-                   userKeyBuffer[0] = user_id;
-                   userKey = userKeyBuffer;
+               
                     await this.#client.set("myuniquevariable","testvariable",{EX:10});
                     ///console.log(await this.#client.get("myuniquevariable"));
                     //store session, add expiration time in Sec
@@ -115,11 +125,7 @@ class StorageSessioonsOnRedis{
          async isSessionExists({hi_p=1, lo_p=2}){
               //making session key
             let sessionKey = this.#convertSessionKey({hi_p,lo_p});
-              /// N E W 
-              let compositeKeyBuffer = ArrayBuffer(16);
-              compositeKeyBuffer[0] = lo_p;
-              compositeKeyBuffer[1] = hi_p;
-              sessionKey = compositeKeyBuffer;
+          
                 //get session data
             if( await this.#client.get(sessionKey)){
                 return true;
@@ -138,11 +144,7 @@ class StorageSessioonsOnRedis{
             //console.log(await this.#client.get("myuniquevariable"));
              //making session key
           let sessionKey = this.#convertSessionKey({hi_p, lo_p});
-            /// N E W 
-            let compositeKeyBuffer = ArrayBuffer(16);
-            compositeKeyBuffer[0] = lo_p;
-            compositeKeyBuffer[1] = hi_p;
-            sessionKey = compositeKeyBuffer;
+            
              //get session data
           let rawData =  await this.#client.get(sessionKey);
             if (!rawData) {
@@ -159,11 +161,7 @@ class StorageSessioonsOnRedis{
          async clearSessionWhenExists(user_id) {
             //making user key
             let userKey = this.#convertUserKey(user_id);
-              /// N E W 
-              let compositeKeyBuffer = ArrayBuffer(16);
-              compositeKeyBuffer[0] = lo_p;
-              compositeKeyBuffer[1] = hi_p;
-              sessionKey = compositeKeyBuffer;
+               
             //ask for session_id
             let sessionId = await this.#client.get(userKey);
             if (!sessionId) {
@@ -184,21 +182,14 @@ class StorageSessioonsOnRedis{
 
          async updateSessionTimestamps ({hi_p=0, lo_p=0, expired=1, last_d=1}) {
             let sessionKey = this.#convertSessionKey({hi_p,lo_p});
-              /// N E W 
-              let compositeKeyBuffer = ArrayBuffer(16);
-              compositeKeyBuffer[0] = lo_p;
-              compositeKeyBuffer[1] = hi_p;
-              sessionKey = compositeKeyBuffer;
+               
             //making user key
             let sessionData = await this.#client.get(sessionKey);
             //converting to an object
             let session = this.#b64stringToObj(sessionData);
             //making user key
             let userKey = this.#convertUserKey(session.user_id);
-               /// N E W
-               let userKeyBuffer = ArrayBuffer(8); //64bit
-               userKeyBuffer[0] = user_id;
-               userKey = userKeyBuffer;
+                
 
              //calculate relation lifetime of a session in Sec:
              let relationLifeTimeInSec = Number((expired - BigInt(Date.now()) ) / BigInt(1000));
