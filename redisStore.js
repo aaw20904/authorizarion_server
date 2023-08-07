@@ -27,8 +27,8 @@ class StorageSessioonsOnRedis{
 
         this.#convertSessionKey = ({hi_p, lo_p})=>{
             const buffer = Buffer.allocUnsafe(16);
-            buffer.writeBigInt64BE(BigInt(lo_p));
-            buffer.writeBigInt64BE(BigInt(hi_p), 8);
+            buffer.writeBigUint64BE(lo_p);
+            buffer.writeBigUint64BE(hi_p, 8);
             return buffer;
         }
         
@@ -47,7 +47,7 @@ class StorageSessioonsOnRedis{
         this.#convertUserKey = (user_id)=>{
            
             const buffer = Buffer.allocUnsafe(8);
-            buffer.writeBigInt64BE(BigInt(user_id));
+            buffer.writeBigUint64BE(BigInt(user_id));
             return buffer;
         
         }

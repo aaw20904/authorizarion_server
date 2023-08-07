@@ -20,9 +20,22 @@ router._cryptoKeys = {
   password: '32768',
 }
 
+router._getLocalIp=() => {
+  const networkInterfaces = os.networkInterfaces();
+  for (const iface of Object.values(networkInterfaces)) {
+    for (const entry of iface) {
+      if (!entry.internal && entry.family === "IPv4") {
+        router._localIp = entry.address;
+        return true;
+      }
+    }
+  }
+  router._localIp="localhost"; 
+  return false;
+}
 
 /****options of SMTP - i`s only options of your email service.This mail will be used for register of users  */
-router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:'http://3.9.109.183:8080/register/register_finish?'};
+router._workMail ={ host:"smtp.gmail.com", user:'kozakizdona@gmail.com', password:"lcopwvgmqcwsqpxy", backURL:`http://13.41.172.50:8080/register/register_finish?`};
 
 router._sendRegistrationMsgToMail = async (par="b64urlString", n_user="")=>{
             // Create a transporter
