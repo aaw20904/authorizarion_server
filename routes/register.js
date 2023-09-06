@@ -11,7 +11,8 @@ const fs = require("fs");
 const { request } = require("http");
 
 router._mailtemplate = fs.readFileSync("./views/mailregister.ejs",{encoding:"utf-8"});
-router._redirectAddrWhenSucc = false;////"https://www.example.com"
+// !! insert your own redirect address
+router._redirectAddrWhenSucc = "http://localhost:80/index/";
 
 router._cryptoKeys = {
   publicKey: fs.readFileSync("./public_key.pem",{encoding:"utf-8"}),
