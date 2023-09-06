@@ -11,7 +11,7 @@ const fs = require("fs");
 const { request } = require("http");
 
 router._mailtemplate = fs.readFileSync("./views/mailregister.ejs",{encoding:"utf-8"});
-router._redirectAddrWhenSucc = "https://www.example.com"
+router._redirectAddrWhenSucc = false;////"https://www.example.com"
 
 router._cryptoKeys = {
   publicKey: fs.readFileSync("./public_key.pem",{encoding:"utf-8"}),
@@ -158,7 +158,14 @@ router.get("/register_finish",async (req,res)=>{
       
      }
      // when the registration is successfull - redirect 
-     res.redirect(router._redirectAddrWhenSucc);
+     if (router._redirectAddrWhenSucc) {
+         // when a redirect address exists
+          res.redirect(router._redirectAddrWhenSucc);
+     } else {
+      ///when there isn`t any redirect address
+          res.sendStatus(201);
+     }
+     
 
   } else {
     res.status(403).json({msg:"wrong or deprecated data!"});
