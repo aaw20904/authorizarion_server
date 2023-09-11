@@ -113,7 +113,7 @@ router.begin_registration =  async function (req, res, next) {
       //send a letter
       try {
         //11.09  IMPLEMENT EMAIL SENDING AS EXTERN SERVICE! await router._sendRegistrationMsgToMail(b64urlEncryptedData, req.body.name);
-            router._respondWithJsonData(res, {confirm:b64urlEncryptedData}, 200);
+            router._respondWithJsonData(res, {data:b64urlEncryptedData}, 200);
       } catch (err) {
             router._respondWithJsonData(res, err, 500);
      
