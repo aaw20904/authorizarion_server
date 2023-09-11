@@ -112,14 +112,15 @@ router.begin_registration =  async function (req, res, next) {
       let b64urlEncryptedData = encryptedData.toString("base64url"); 
       //send a letter
       try {
-        await router._sendRegistrationMsgToMail(b64urlEncryptedData, req.body.name);
+        //11.09  IMPLEMENT EMAIL SENDING AS EXTERN SERVICE! await router._sendRegistrationMsgToMail(b64urlEncryptedData, req.body.name);
+            router._respondWithJsonData(res, {confirm:b64urlEncryptedData}, 200);
       } catch (err) {
             router._respondWithJsonData(res, err, 500);
      
           return false;
       }
       //when success
-          router._respondWithJsonData(res,{...req.body},200);
+         //11.09 router._respondWithJsonData(res,{...req.body},200);
         
  } else {
     res.statusCode = 400;
@@ -181,8 +182,9 @@ router.register_finish = async (req,res)=>{
       
      }
      // when the registration is successfull - redirect 
-      res.writeHead(302, { 'Location': router._redirectAddrWhenSucc });
-      res.end();
+    //11.09   res.writeHead(302, { 'Location': router._redirectAddrWhenSucc });
+      router._respondWithJsonData(res,{result:"Created"},201);
+    //11.09  res.end();
 
   } else {
     router._respondWithJsonData(res, {msg:"wrong or deprecated data!"}, 403);
