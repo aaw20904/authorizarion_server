@@ -38,14 +38,21 @@ if(cluster.isMaster) {
         //when tables absent - create it:
         await rdbmsLayer.initDb();
         //**************************** */
-        //create mysql storage - when we use mysql sessin storage
-      //let store = new mysqlStore.StorageOfSessions(rdbmsLayer.getMysqlPool());
-      //init the store
-      //await store.init();
-            //********************** */
-        // when a store sessions is Redis
-          let store = new redisStore.StorageSessioonsOnRedis();
-          await  store.init();
+        //create a storage for s e s s i o n s:
+        /**
+         
+█░█░█ █░█ █▀▀ █▄░█   ▄▀█   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█   █▀ ▀█▀ █▀█ █▀█ █▀▀   ▄▄   █▀▄▀█ █▄█ █▀ █▀█ █░░ ▀
+▀▄▀▄▀ █▀█ ██▄ █░▀█   █▀█   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█   ▄█ ░█░ █▄█ █▀▄ ██▄   ░░   █░▀░█ ░█░ ▄█ ▀▀█ █▄▄ ▄
+         */
+      let store = new mysqlStore.StorageOfSessions(rdbmsLayer.getMysqlPool());
+      await store.init();
+ /*
+            
+█░█░█ █░█ █▀▀ █▄░█   ▄▀█   █▀ █▀▀ █▀ █▀ █ █▀█ █▄░█   █▀ ▀█▀ █▀█ █▀█ █▀▀   ▄▄   █▀█ █▀▀ █▀▄ █ █▀ ▀
+▀▄▀▄▀ █▀█ ██▄ █░▀█   █▀█   ▄█ ██▄ ▄█ ▄█ █ █▄█ █░▀█   ▄█ ░█░ █▄█ █▀▄ ██▄   ░░   █▀▄ ██▄ █▄▀ █ ▄█ ▄
+ */
+        //  let store = new redisStore.StorageSessioonsOnRedis();
+       //   await  store.init();
         
 
         //create sessions factory
@@ -59,7 +66,7 @@ if(cluster.isMaster) {
         const tableOfRoutes ={
           "/hello":{proc:(req, res)=>{res.setHeader('Content-Type', 'text/plain'); res.end("word!"); }, method:"GET"},
           "/register/begin_registration":{proc:registerRouter.router.begin_registration, method:"POST"},
-          "/register/register_finish":{proc:registerRouter.router.register_finish, method:"GET"},
+          "/register/register_finish":{proc:registerRouter.router.register_finish, method:"POST"},
           "/login":{proc:loginRouter.router.login, method:"POST"},
           "/logoff":{proc:validationRouter.logoff, method:"POST"},
           "/validate":{proc:validationRouter.router.validate, method:"POST"},
@@ -78,7 +85,12 @@ if(cluster.isMaster) {
               //is a method proprely?
               if (routeProcedures.method == req.method) {
                 await routeProcedures.proc(req, res);
-                return;
+                
+                res.writeHead(400);
+                res.end("Bad request!");
+              }else{
+                res.writeHead(400);
+                res.end("Bad request!");
               }    
           } else {
               res.setHeader('Content-Type', 'text/plain' );
