@@ -85,9 +85,6 @@ if(cluster.isMaster) {
               //is a method proprely?
               if (routeProcedures.method == req.method) {
                 await routeProcedures.proc(req, res);
-                
-                res.writeHead(400);
-                res.end("Bad request!");
               }else{
                 res.writeHead(400);
                 res.end("Bad request!");
