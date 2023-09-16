@@ -17,7 +17,7 @@ router.login =  async  (req, res)=>{
                 //---1) is a user exists?
                 userinfo  = await router.rdbmsLayer.getUserByEmail(req.body.email);
                 if (!userinfo) {
-                    router._respondWithJsonData(res,{err:"Bad credentials!"}, 404);
+                    router._respondWithJsonData(res,{err:"Bad credentials!"}, 401);
                     return false;
                 } 
                 //--2) Has a user been blocked by Admin?
