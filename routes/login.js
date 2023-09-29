@@ -41,7 +41,7 @@ router.login =  async  (req, res)=>{
                 if(! await passwordValidator.verifyPassword(req.body.password, userinfo.passw, userinfo.salt)){
                     //when a password is incorrect - increment fail attempts
                     await router.rdbmsLayer.incrementFailLogins(userinfo.user_id);
-                     router._respondWithJsonData(res,{err:"Bad credentials!"}, 404);
+                     router._respondWithJsonData(res,{err:"Bad credentials!"}, 401);
                     return false;
                 }
                 //---5) Generate a new session
