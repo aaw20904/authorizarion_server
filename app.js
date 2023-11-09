@@ -68,7 +68,7 @@ if(cluster.isMaster) {
           "/register/begin_registration":{proc:registerRouter.router.begin_registration, method:"POST"},
           "/register/register_finish":{proc:registerRouter.router.register_finish, method:"POST"},
           "/login":{proc:loginRouter.router.login, method:"POST"},
-          "/logoff":{proc:validationRouter.logoff, method:"POST"},
+          "/logoff":{proc:validationRouter.router.logoff, method:"POST"},
           "/validate":{proc:validationRouter.router.validate, method:"POST"},
         }
 
@@ -79,7 +79,7 @@ if(cluster.isMaster) {
         await bodyParser.parseRequestsBody(req);
         let link =  url.parse(req.url, true);
         link = link.pathname;
-        //search 
+        //search {proc: undefined, method: 'POST'}
         let routeProcedures = tableOfRoutes[link];
           if (routeProcedures) {
               //is a method proprely?
