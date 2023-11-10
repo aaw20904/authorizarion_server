@@ -13,7 +13,7 @@ class Sessions {
     #tokenExpirationLimit;
     #sessionExtensionTime;
     #storage;
-    constructor (storage, sessionParams={///all the time are in milliSeconds
+    constructor (storage, sessionParams={///all the time are in milliSeconds.Explanation briefly:
             sessionExtensionTime: BigInt(1000 * 60 * 5), //after successfull authorization (by token) - duration extended by this value
             initialSessionDuration: BigInt(1000 * 60 * 15), /* when a session created - the initial duration assigned */
             tokenLifeTime: BigInt(1000 * 60 * 15), /*lifetime of token.This value stays the 
