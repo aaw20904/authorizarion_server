@@ -6,52 +6,54 @@ class Sessions {
     #idGen;
     #uint64ToBase64url;
     #base64urlToUint64;
-    #limitOfTimeoutExtension;
+    #extendSessionDurationUntil;
     #createDigitalSignature;
     #verifyDigitalSignature;
-    #sessionExpirationLimit;
+    #initialSessionDuration;
     #tokenExpirationLimit;
-    #sessionExtendTime;
+    #sessionExtensionTime;
     #storage;
     constructor (storage, sessionParams={///all the time are in milliSeconds
-            sessionExtensionTime: BigInt(1000 * 60 * 4), //this value has been added after successfull verification to session lifetime in a storage
-            sessionLifeTime: BigInt(1000 * 60 * 4), //lifetime of session. This value saved to the storage when a new session has been created
-            tokenLifeTime: BigInt(1000 * 60 * 16), ///lifetime of token.This value stays the same during all time of life of a session
-            limitOfTimeoutExtension: BigInt(1000 * 60 * 18),
+            sessionExtensionTime: BigInt(1000 * 60 * 5), //after successfull authorization (by token) - duration extended by this value
+            initialSessionDuration: BigInt(1000 * 60 * 15), /* when a session created - the initial duration assigned */
+            tokenLifeTime: BigInt(1000 * 60 * 16), /*lifetime of token.This value stays the 
+                                                    same during all time of life of a session */
+            extendSessionDurationUntil: BigInt(1000 * 60 * 60), //when session duration has reached to this value - extension not allowed
     }) {
         /** T I M E O U T  E X T E N S I O N   E X P L A N A T I O N
          NOTE. Imagine and suppose: we have time - 12:00. 
-          this.#sessionExpirationLimit = 30min,
-          this.#sessionExtendTime  = 5min,
-          this.#limitOfTimeoutExtension = 50min
+          this.#initialSessionDuration = 30min,
+          this.#sessionExtensionTime  = 5min,
+          this.#extendSessionDurationUntil = 50min
+
           Expiration timeout holds in storage as "expired"
 
-          "expired" = session_create_time + this.#sessionExpirationLimit
+          "expired" = session_create_time + this.#initialSessionDuration
                                  =  11:50 + 30min = 12:20. 
         
           
-          When  user authenticated successfully (using Bearer token):
+          When  user authorized successfully (using Bearer token):
             Firstly: we checking - can we extends a timeout?
 
-           ("expired" - NOW() ) <  this.#limitOfTimeoutExtension  ?
+           ("expired" - NOW() ) <  this.#extendSessionDurationUntil  ?
                              20 < 50 - yes! We can!
 
           And "expired" will be extended:
-                 "expired" + this.#sessionExtendTime = 12:20 + 5min = 12:25.
+                 "expired" + this.#sessionExtensionTime = 12:20 + 5min = 12:25.
         
         suppose - we have "expired" = 12:55, checking-
 
-          ("expired" - NOW() ) <  this.#limitOfTimeoutExtension  ?
+          ("expired" - NOW() ) <  this.#extendSessionDurationUntil  ?
                  (12:55-12:00) > 50 - No! We can`t! 
         
        So, we don`t extend the timeout - because it is bigf enough for us.
            
          */
         this.#storage = storage;
-        this.#sessionExtendTime = sessionParams.sessionExtensionTime;//add to session expiration time when successfuly validated
-        this.#sessionExpirationLimit = sessionParams.sessionLifeTime; //one hour
+        this.#sessionExtensionTime = sessionParams.sessionExtensionTime;//add to session expiration time when successfuly validated
+        this.#initialSessionDuration = sessionParams.initialSessionDuration; //one hour
         this.#tokenExpirationLimit = sessionParams.tokenLifeTime; //5 minutes - lifetime of the token
-        this.#limitOfTimeoutExtension = sessionParams.limitOfTimeoutExtension;
+        this.#extendSessionDurationUntil = sessionParams.extendSessionDurationUntil;
             ///input data  - base64url string, output signature - base64
           this.#createDigitalSignature = async (privateKey, data, passphrase='cat')=>{
                 return new Promise((resolve, reject) => {
@@ -170,7 +172,7 @@ class Sessions {
         }
         //---4) issuance data and expiration (token and session) threshold
         issued = BigInt( Date.now());
-        activeUntil = BigInt(Date.now()) + this.#sessionExpirationLimit;
+        activeUntil = BigInt(Date.now()) + this.#initialSessionDuration;
         
          
         //---5) Making Base64 string
@@ -258,9 +260,9 @@ class Sessions {
         }
         updatedExpirationTime = BigInt(storedSession.expired);
         //7.1)Checking: can we extends expiration?
-         if( (updatedExpirationTime - BigInt(Date.now())) < this.#limitOfTimeoutExtension ) {
+         if( (updatedExpirationTime - BigInt(Date.now())) < this.#extendSessionDurationUntil ) {
             //extends lifetime
-             updatedExpirationTime +=  this.#sessionExtendTime;
+             updatedExpirationTime +=  this.#sessionExtensionTime;
 
          } else{
             //stay the same lifetime
